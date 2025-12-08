@@ -1,13 +1,9 @@
 ;;; jal-build-maven.el --- Maven detection for Java Agent Loader -*- lexical-binding: t; -*-
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 0.1.0
-;; Package-Prefixes: (jal)
-;; Keywords: java, languages, tools
-;; URL: https://github.com/saulotoledo/java-agent-loader
 
 ;;; Commentary:
-;; Maven detection logic for jal.
+;; Maven detection logic for JAL.
 
 ;;; Code:
 

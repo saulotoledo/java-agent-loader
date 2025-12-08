@@ -1,10 +1,6 @@
 ;;; jal-vars.el --- Variables for Java Agent Loader -*- lexical-binding: t; -*-
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 0.1.0
-;; Package-Prefixes: (jal)
-;; Keywords: java, languages, tools
-;; URL: https://github.com/saulotoledo/jal
 
 ;;; Commentary:
 ;; Variables and constants for jal.
@@ -37,6 +33,15 @@ PROPS is a property list supporting the following keys:
               Default: \"%a-%v.jar\"."
   :type '(alist :key-type string :value-type (plist :key-type symbol :value-type (choice string (const :tag "None" nil))))
   :group 'jal)
+
+(defcustom jal-agents-detected-hook nil
+  "Hook run after agents are successfully detected and cached.
+This is useful for restarting the LSP/Eglot server to pick up the new agents."
+  :type 'hook
+  :group 'jal)
+
+(defvar jal--original-lsp-java-vmargs nil
+  "Stores the original value of `lsp-java-vmargs' before JAL modification.")
 
 (provide 'jal-vars)
 ;;; jal-vars.el ends here

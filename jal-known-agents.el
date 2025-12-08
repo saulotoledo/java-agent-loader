@@ -1,10 +1,6 @@
 ;;; jal-known-agents.el --- Known agents registry for JAL -*- lexical-binding: t; -*-
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 0.1.0
-;; Package-Prefixes: (jal)
-;; Keywords: java, languages, tools
-;; URL: https://github.com/saulotoledo/java-agent-loader
 
 ;;; Commentary:
 ;; This module provides a registry of commonly used Java agents with sensible defaults.

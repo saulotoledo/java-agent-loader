@@ -1,10 +1,6 @@
 ;;; jal-utils.el --- Utilities for Java Agent Loader -*- lexical-binding: t; -*-
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 0.1.0
-;; Package-Prefixes: (jal)
-;; Keywords: java, languages, tools
-;; URL: https://github.com/saulotoledo/jal
 
 ;;; Commentary:
 ;; Utility functions for jal.
@@ -73,7 +69,7 @@ The cache is saved on the current project's local cache file."
              (updated-config (cons new-agent-entry (delq (assoc agent-id current-config) current-config))))
 
         (jal--write-project-config project-root updated-config)
-        (message "Agent '%s' v%s cached for project." agent-id version)))))
+        (message "JAL: Agent '%s' v%s cached for project." agent-id version)))))
 
 (defun jal--check-executable (program error-message)
   "Check if PROGRAM is executable on the system path. Throws ERROR-MESSAGE if not."

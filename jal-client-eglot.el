@@ -1,13 +1,9 @@
 ;;; jal-client-eglot.el --- Eglot integration for JAL -*- lexical-binding: t; -*-
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 0.1.0
-;; Package-Prefixes: (jal)
-;; Keywords: java, languages, tools
-;; URL: https://github.com/saulotoledo/java-agent-loader
 
 ;;; Commentary:
-;; This module provides integration between jal and Eglot.
+;; This module provides integration between JAL and Eglot.
 
 ;;; Code:
 
@@ -26,6 +22,15 @@ ORIGINAL-CONTACT is the original contact entry from `eglot-server-programs'."
         (append contact (jal-get-vmargs-with-javaagents))
       contact)))
 
+(defun jal--eglot-reconnect ()
+  "Reconnect eglot if active."
+  (when (and (bound-and-true-p eglot-managed-mode)
+             (fboundp 'eglot-reconnect)
+             (fboundp 'eglot-current-server))
+    (let ((server (eglot-current-server)))
+      (when server
+        (eglot-reconnect server)))))
+
 (defun jal-eglot-java-setup (&optional agents)
   "Configures JAL for eglot with AGENTS list.
 AGENTS is a list where each element is either:
@@ -38,6 +43,7 @@ If AGENTS is nil, uses the default configuration.
 This function should be called in the :init section for eglot."
   (setq jal-agents-config (jal--merge-agent-configs (or agents '())))
   (add-hook 'eglot-connect-hook #'jal-find-and-configure-agents)
+  (add-hook 'jal-agents-detected-hook #'jal--eglot-reconnect)
   (let ((entry (assoc '(java-mode jdtls-mode) eglot-server-programs)))
     (unless entry
       (setq entry (assoc 'java-mode eglot-server-programs)))

@@ -2,7 +2,6 @@
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
 ;; Version: 0.1.0
-;; Package-Prefixes: (jal)
 ;; Package-Requires: ((emacs "29.1") (project "0.3.0"))
 ;; Keywords: java, languages, tools
 ;; URL: https://github.com/saulotoledo/java-agent-loader
@@ -140,6 +139,7 @@ It skips execution and returns nil if prerequisites were not met."
 
             (jal--cache-agent-config agent-id detected-path detected-version agent-params)))
 
+        (run-hooks 'jal-agents-detected-hook)
         (not detection-results)))))
 
 ;;;###autoload
@@ -181,7 +181,7 @@ Returns the list of agent configurations found, or nil."
 
           (if (or (null agent-configs)
                   (not (proper-list-p agent-configs)))
-              (if (y-or-n-p (format "JAL: do you want to setup java agents for this project? "))
+              (if (y-or-n-p (format "JAL: Do you want to setup java agents for this project? "))
                   (jal-detect-java-agents)
                 (message "JAL: Java agents configuration skipped for this session. Run M-x jal-detect-java-agents to do it later."))
 
@@ -194,8 +194,7 @@ Returns the list of agent configurations found, or nil."
 
                 (when (and (stringp path) (file-exists-p path))
                   (message "JAL: Agent %s (v%s) configured." agent-id version))))
-            (message "agent-configs %s" agent-configs)
-            (message "JAL configuration complete.")
+            (message "JAL: Configuration complete.")
             agent-configs)))
 
     (warn "JAL: Search for agents skipped. Prerequisites not met.")

@@ -1,13 +1,9 @@
 ;;; jal-client-lsp.el --- LSP-Java integration for JAL -*- lexical-binding: t; -*-
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 0.1.0
-;; Package-Prefixes: (jal)
-;; Keywords: java, languages, tools
-;; URL: https://github.com/saulotoledo/java-agent-loader
 
 ;;; Commentary:
-;; This module provides integration between jal and lsp-java.
+;; This module provides integration between JAL and lsp-java.
 
 ;;; Code:
 
@@ -17,6 +13,15 @@
 
 (defvar lsp-java-vmargs)
 (defvar lsp-after-initialize-hook)
+
+(defun jal--lsp-java-restart ()
+  "Restart lsp-java workspace if active."
+  (when (and (bound-and-true-p lsp-mode)
+             (fboundp 'lsp-workspace-restart)
+             (fboundp 'lsp-workspaces))
+    (setq lsp-java-vmargs (append (bound-and-true-p jal--original-lsp-java-vmargs) (jal-get-vmargs-with-javaagents)))
+    (dolist (workspace (lsp-workspaces))
+      (lsp-workspace-restart workspace))))
 
 ;;;###autoload
 (defun jal-lsp-java-setup (&optional agents)
@@ -30,8 +35,12 @@ User agents override known agents by artifact-id.
 If AGENTS is nil, uses the default configuration.
 This function should be called in the :init for lsp-java."
   (setq jal-agents-config (jal--merge-agent-configs (or agents '())))
-  (setq lsp-java-vmargs (jal-get-vmargs-with-javaagents))
-  (add-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents))
+  (require 'lsp-java) ; Ensure lsp-java is loaded, so we can access the detault lsp-java-vmargs
+  (unless (bound-and-true-p jal--original-lsp-java-vmargs)
+    (setq jal--original-lsp-java-vmargs (bound-and-true-p lsp-java-vmargs)))
+  (setq lsp-java-vmargs (append jal--original-lsp-java-vmargs (jal-get-vmargs-with-javaagents)))
+  (add-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents)
+  (add-hook 'jal-agents-detected-hook #'jal--lsp-java-restart))
 
 (provide 'jal-client-lsp)
 ;;; jal-client-lsp.el ends here

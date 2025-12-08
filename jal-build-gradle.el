@@ -1,13 +1,9 @@
 ;;; jal-build-gradle.el --- Gradle detection for Java Agent Loader -*- lexical-binding: t; -*-
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 0.1.0
-;; Package-Prefixes: (jal)
-;; Keywords: java, languages, tools
-;; URL: https://github.com/saulotoledo/java-agent-loader
 
 ;;; Commentary:
-;; Gradle detection logic for jal.
+;; Gradle detection logic for JAL.
 
 ;;; Code:
 
@@ -20,7 +16,7 @@ Returns list of (agent-id path version)."
 
   (let ((default-directory (or project-root default-directory))
         (found-agents '()))
-    (message "Running Gradle dependency analysis for agents: %S" agents-list)
+    (message "JAL: Running Gradle dependency analysis for %s agents..." (length agents-list))
 
     ;; 1. Get Maven Repository Path (Gradle often uses the Maven cache for standard artifacts)
     (let* ((mvn-repo-cmd "mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout 2>/dev/null")
