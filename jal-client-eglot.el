@@ -36,8 +36,7 @@ PROPS is a plist with keys :params and :jar-path.
 User agents override known agents by artifact-id.
 If AGENTS is nil, uses the default configuration.
 This function should be called in the :init section for eglot."
-  (when agents
-    (setq jal-agents-config (jal--merge-agent-configs agents)))
+  (setq jal-agents-config (jal--merge-agent-configs (or agents '())))
   (add-hook 'eglot-connect-hook #'jal-find-and-configure-agents)
   (let ((entry (assoc '(java-mode jdtls-mode) eglot-server-programs)))
     (unless entry

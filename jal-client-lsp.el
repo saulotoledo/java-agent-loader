@@ -29,8 +29,7 @@ PROPS is a plist with keys :params and :jar-path.
 User agents override known agents by artifact-id.
 If AGENTS is nil, uses the default configuration.
 This function should be called in the :init for lsp-java."
-  (when agents
-    (setq jal-agents-config (jal--merge-agent-configs agents)))
+  (setq jal-agents-config (jal--merge-agent-configs (or agents '())))
   (setq lsp-java-vmargs (jal-get-vmargs-with-javaagents))
   (add-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents))
 
