@@ -53,10 +53,12 @@ Each entry in the list can be:
     - ~%a~: artifactId
     - ~%v~: version
     - ~%g~: groupId
-    - Default: ~"%a-%v.jar"~
   - **Absolute Path**: If it starts with ~/~, it is used as an absolute path. Placeholders (~%a~, ~%v~) are still supported.
 
 ** Usage with lsp-java
+
+
+You do not need to inform the `:params` property to the setup functions. It is optional and will be handled automatically if omitted.
 
 The easiest way to use JAL with ~lsp-java~ is via the ~jal-lsp-java-setup~ function in your ~:init~ block.
 
@@ -68,10 +70,10 @@ The easiest way to use JAL with ~lsp-java~ is via the ~jal-lsp-java-setup~ funct
    '(
      ;; Use known agent with defaults
      ("lombok")
-     
+
      ;; Override known agent with custom parameters
      ("org.jacoco.agent" :params "destfile=target/jacoco.exec")
-     
+
      ;; Add custom agent not in known list
      ("my-custom-agent" :jar-path "/path/to/my-agent.jar" :params "config=value")
      ))
@@ -91,6 +93,9 @@ This function:
 
 ** Usage with Eglot
 
+
+You do not need to inform the `:params` property to the setup functions. It is optional and will be handled automatically if omitted.
+
 For ~eglot~, use the ~jal-eglot-java-setup~ function:
 
 #+begin_src elisp
@@ -100,7 +105,7 @@ For ~eglot~, use the ~jal-eglot-java-setup~ function:
   (jal-eglot-java-setup
    '(
      ("lombok")
-     ("org.jacoco.agent" :jar-path "%a-%v-runtime.jar")
+     ("org.jacoco.agent" :jar-path "org/jacoco/%a/%v/%a-%v-runtime.jar")
     )))
 #+end_src
 
@@ -176,4 +181,3 @@ Each entry is: ~(ARTIFACT-ID PATH PARAMS VERSION)~
 - *Gradle Support*: Gradle support needs work, as it can use different repository folders depending on configuration.
 - *Eglot Integration*: Eglot configuration needs more testing.
 - *Secrets Management*: There is no approach yet to allow ~.jal-config.el~ without exposing secrets if agent options require them.
-
