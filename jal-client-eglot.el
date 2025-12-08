@@ -26,7 +26,7 @@ ORIGINAL-CONTACT is the original contact entry from `eglot-server-programs'."
         (append contact (jal-get-vmargs-with-javaagents))
       contact)))
 
-(defun jal-eglot-java-setup (agents)
+(defun jal-eglot-java-setup (&optional agents)
   "Configures JAL for eglot with AGENTS list.
 AGENTS is a list where each element is either:
 - (ARTIFACT-ID . PROPS)
@@ -34,8 +34,10 @@ AGENTS is a list where each element is either:
 
 PROPS is a plist with keys :params and :jar-path.
 User agents override known agents by artifact-id.
+If AGENTS is nil, uses the default configuration.
 This function should be called in the :init section for eglot."
-  (setq jal-agents-config (jal--merge-agent-configs agents))
+  (when agents
+    (setq jal-agents-config (jal--merge-agent-configs agents)))
   (add-hook 'eglot-connect-hook #'jal-find-and-configure-agents)
   (let ((entry (assoc '(java-mode jdtls-mode) eglot-server-programs)))
     (unless entry
