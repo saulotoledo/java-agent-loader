@@ -1,33 +1,40 @@
-;;; jal-client-eglot.el --- Eglot integration for JAL -*- lexical-binding: t; -*-
+;;; jal-client-eglot.el --- eglot-java integration for JAL -*- lexical-binding: t; -*-
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
 
 ;;; Commentary:
-;; This module provides integration between JAL and Eglot.
+;; This module provides integration between JAL and eglot-java.
+;; It installs an around advice on `eglot-java--eclipse-jdt-contact' that
+;; dynamically extends `eglot-java-eclipse-jdt-args' with the javaagent
+;; arguments for the current project on every JDTLS startup.
 
 ;;; Code:
 
-(require 'eglot)
 (require 'jal)
 (require 'jal-vars)
 (require 'jal-known-agents)
 
-(defun jal--eglot-contact (original-contact)
-  "Return the contact for Eglot, injecting java agents.
-ORIGINAL-CONTACT is the original contact entry from `eglot-server-programs'."
-  (let ((contact (if (functionp original-contact)
-                     (funcall original-contact)
-                   original-contact)))
-    (if (listp contact)
-        (append contact (jal-get-vmargs-with-javaagents))
-      contact)))
+(defvar eglot-java-eclipse-jdt-args)
+
+(defun jal--eglot-java-contact-advice (orig-fn &rest args)
+  "Around advice for `eglot-java--eclipse-jdt-contact' to inject JAL vmargs.
+Dynamically extends `eglot-java-eclipse-jdt-args' with the javaagent
+arguments for the current project, leaving the variable itself unchanged.
+ORIG-FN is the original function being advised.
+&REST ARGS contains the arguments passed to the advised function."
+  (let ((eglot-java-eclipse-jdt-args
+         (append eglot-java-eclipse-jdt-args (jal-get-vmargs-with-javaagents))))
+    (apply orig-fn args)))
 
 (defun jal--eglot-current-java-key ()
-  "Return the java binary path active for the current Eglot session.
-Resolves the first `java' found on PATH; override this function or
-set `jal-current-java-key-function' directly if your Eglot setup
-configures a specific JVM."
-  (executable-find "java"))
+  "Return the java binary path active for the current eglot-java session.
+Uses `eglot-java--find-java-program-from-alternatives' when available,
+falling back to the first `java' on PATH."
+  (if (fboundp 'eglot-java--find-java-program-from-alternatives)
+      (condition-case nil
+          (eglot-java--find-java-program-from-alternatives)
+        (error (executable-find "java")))
+    (executable-find "java")))
 
 (defun jal--eglot-reconnect ()
   "Reconnect eglot if active."
@@ -38,26 +45,34 @@ configures a specific JVM."
       (when server
         (eglot-reconnect server)))))
 
-(defun jal-eglot-java-setup (&optional agents)
-  "Configures JAL for eglot with AGENTS list.
-AGENTS is a list where each element is either:
-- (ARTIFACT-ID . PROPS)
-- (ARTIFACT-ID)
+(defvar jal--eglot-java-interface-warning-issued nil
+  "Non-nil once JAL has already warned about a missing eglot-java interface.
+Reset to nil on Emacs restart, so a warning is re-issued after a package
+update that changes eglot-java's internal functions.")
 
-PROPS is a plist with keys :params and :jar-path.
-User agents override known agents by artifact-id.
-If AGENTS is nil, uses the default configuration.
-This function should be called in the :init section for eglot."
-  (setq jal-agents-config (jal--merge-agent-configs (or agents '())))
+(defun jal--eglot-java-check-interface ()
+  "Warn if `eglot-java--eclipse-jdt-contact' has disappeared since JAL was set up.
+Runs on `eglot-connect-hook' so a package update that removes or renames
+the function is caught on the next server connection.
+Warns at most once per Emacs session to avoid repeat messages on reconnects."
+  (unless (or (fboundp 'eglot-java--eclipse-jdt-contact)
+              jal--eglot-java-interface-warning-issued)
+    (setq jal--eglot-java-interface-warning-issued t)
+    (jal--warn-interface-changed "eglot-java--eclipse-jdt-contact" "eglot-java")))
+
+;;;###autoload
+(defun jal-eglot-java-setup ()
+  "Configure JAL for eglot-java.
+Merges `jal-additional-agents' with the known-agents registry and installs
+an around advice on `eglot-java--eclipse-jdt-contact' that dynamically
+appends the javaagent vmargs for the current project on every JDTLS startup.
+This function is called automatically when eglot-java is loaded."
+  (setq jal-agents-config (jal--merge-agent-configs jal-additional-agents))
   (setq jal-current-java-key-function #'jal--eglot-current-java-key)
+  (advice-add 'eglot-java--eclipse-jdt-contact :around #'jal--eglot-java-contact-advice)
+  (add-hook 'eglot-connect-hook #'jal--eglot-java-check-interface)
   (add-hook 'eglot-connect-hook #'jal-find-and-configure-agents)
-  (add-hook 'jal-agents-detected-hook #'jal--eglot-reconnect)
-  (let ((entry (assoc '(java-mode jdtls-mode) eglot-server-programs)))
-    (unless entry
-      (setq entry (assoc 'java-mode eglot-server-programs)))
-    (when entry
-      (let ((original-contact (cdr entry)))
-        (setcdr entry (lambda (&rest _args) (jal--eglot-contact original-contact)))))))
+  (add-hook 'jal-agents-detected-hook #'jal--eglot-reconnect))
 
 (provide 'jal-client-eglot)
 ;;; jal-client-eglot.el ends here
