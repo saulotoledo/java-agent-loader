@@ -1,30 +1,38 @@
 * Java Agent Loader (JAL)
 
-> [!WARNING]
-> This package is currently under active development and will be released for public usage soon.
-> Until then, it might contain breaking changes.
+#+begin_quote
+*WARNING*: This package is currently under active development and will be
+released for public usage soon. Until then, it might contain breaking changes.
+#+end_quote
 
 ~jal~ is an Emacs package designed to simplify the injection of Java agents
-(like Lombok, JaCoCo, etc.) into the JDT Language Server (JDTLS) process used by ~lsp-java~
-and ~eglot~.
+(like Lombok, JaCoCo, etc.) into the JDT Language Server (JDTLS) process used by
+~lsp-java~ and ~eglot-java~.
 
-It automatically detects configured agents in your project's dependencies (Maven or Gradle),
-resolves their JAR paths, and appends the appropriate `-javaagent` arguments to your LSP
-server's startup command.
+It automatically detects configured agents in your project's dependencies (Maven
+or Gradle), resolves their JAR paths, and appends the appropriate ~-javaagent~
+arguments to your LSP server's startup command.
 
 ** Features
 
-- **Automatic Detection**: Scans your `pom.xml` or `build.gradle` to find agent versions.
-- **Caching**: Caches the resolved paths per project to avoid slow build system calls on
-  every startup.
-- **Flexible Configuration**: Supports custom JAR names, absolute paths, and agent parameters.
-- **LSP Integration**: Provides a simple setup function for ~lsp-java~ and ~eglot~.
+- /Automatic Detection/: Scans your =pom.xml= or =build.gradle= to find agent
+  versions.
+- /Caching/: Caches the resolved paths per project to avoid slow build system
+  calls on every startup.
+- /Flexible Configuration/: Supports custom JAR names, absolute paths, and agent
+  parameters.
+- /LSP Integration/: Works with both =lsp-java= and =eglot-java= via unobtrusive
+  advice.
+- /Safe/: Uses dynamic let-bindings in the advice -- never permanently mutates
+  =lsp-java-vmargs= or =eglot-java-eclipse-jdt-args=.
+- /Build-system aware/: Only prompts for agent setup when inside a Maven or
+  Gradle project.
 
 ** Installation
 
 *** Manual
 
-Clone the repository and add it to your `load-path`.
+Clone the repository and add it to your ~load-path~.
 
 #+begin_src elisp
 (add-to-list 'load-path "/path/to/java-agent-loader")
@@ -34,150 +42,172 @@ Clone the repository and add it to your `load-path`.
 *** Using straight.el
 
 #+begin_src elisp
-(straight-use-package '(java-agent-loader :type git :host github :repo "saulotoledo/java-agent-loader"))
+(straight-use-package
+ '(java-agent-loader :type git :host github :repo "saulotoledo/java-agent-loader"))
 #+end_src
 
 ** Configuration
 
-The core configuration variable is ~jal-agents-config~. It is a list of agents you want JAL to look for.
+JAL requires no mandatory configuration. By default it looks for all agents
+listed in ~jal-known-agents~ (Lombok, OpenTelemetry Java Agent, JaCoCo).
 
-Each entry in the list can be:
-1. ~("ARTIFACT-ID")~: Minimal configuration. Uses default settings.
-2. ~("ARTIFACT-ID" :prop1 value1 ...)~: Configuration with custom properties.
+To add agents or override known-agent defaults, set ~jal-additional-agents~
+*before* ~lsp-java~ or ~eglot-java~ is loaded:
 
-*** Supported Properties
+#+begin_src elisp
+(use-package jal
+  :ensure t
+  :config
+  (setq jal-additional-agents
+        '(
+          ;; Override a known agent with custom parameters
+          ("org.jacoco.agent" :params "destfile=target/jacoco.exec")
 
-- ~:params~ (String): Optional arguments to append to the agent (e.g., ~=destfile=...~).
+          ;; Add an agent not in the known list
+          ("my-custom-agent" :jar-path "/opt/agents/my-agent.jar")
+          )))
+#+end_src
+
+JAL hooks into ~lsp-java~ and ~eglot-java~ automatically via
+~with-eval-after-load~. No further setup is needed in the ~lsp-java~ or
+~eglot-java~ ~use-package~ blocks.
+
+*** Supported Properties for ~jal-additional-agents~
+
+Each entry is either ~("ARTIFACT-ID")~ (use defaults) or ~("ARTIFACT-ID" :key
+value ...)~ (override properties).
+
+- ~:params~ (String): Arguments appended after the ~=~ in
+  ~-javaagent:...=<params>~.
 - ~:jar-path~ (String): A format string or absolute path for the agent JAR.
-  - **Relative Pattern**: If it does *not* start with ~/~, it is treated as a pattern relative to your local Maven/Gradle repository.
+  - **Relative Pattern**: If it does *not* start with ~/~, it is treated as a
+    pattern relative to your local Maven/Gradle repository.
     - ~%a~: artifactId
     - ~%v~: version
     - ~%g~: groupId
-  - **Absolute Path**: If it starts with ~/~, it is used as an absolute path. Placeholders (~%a~, ~%v~) are still supported.
+  - **Absolute Path**: If it starts with ~/~, it is used as-is. Placeholders
+    (~%a~, ~%v~) are still expanded.
 
 ** Usage with lsp-java
 
-
-You do not need to inform the `:params` property to the setup functions. It is optional and will be handled automatically if omitted.
-
-The easiest way to use JAL with ~lsp-java~ is via the ~jal-lsp-java-setup~ function in your ~:init~ block.
+Just load JAL before ~lsp-java~. JAL integrates automatically.
 
 #+begin_src elisp
+(use-package jal
+  :ensure t
+  :config
+  (setq jal-additional-agents '(("my-custom-agent")))) ; Optional
+
 (use-package lsp-java
   :ensure t
-  :init
-  (jal-lsp-java-setup
-   '(
-     ;; Use known agent with defaults
-     ("lombok")
-
-     ;; Override known agent with custom parameters
-     ("org.jacoco.agent" :params "destfile=target/jacoco.exec")
-
-     ;; Add custom agent not in known list
-     ("my-custom-agent" :jar-path "/path/to/my-agent.jar" :params "config=value")
-     ))
-
-  :hook
-  (java-mode . lsp)
-
-  :bind
-  (:map java-mode-map
-        ("M-RET" . lsp-execute-code-action)))
+  :hook ((java-mode    . lsp)
+         (java-ts-mode . lsp)))
 #+end_src
 
-This function:
-1. Sets ~jal-agents-config~.
-2. Configures ~lsp-java-vmargs~ to include the detected agents.
-3. Adds a hook to ~lsp-after-initialize-hook~ to scan for agents when a project is opened.
+Internally JAL installs an ~:around~ advice on ~lsp-java--ls-command~ that
+dynamically extends ~lsp-java-vmargs~ with the resolved ~-javaagent~ arguments
+for each server startup.
 
-** Usage with Eglot
+** Usage with eglot-java
 
-
-You do not need to inform the `:params` property to the setup functions. It is optional and will be handled automatically if omitted.
-
-For ~eglot~, use the ~jal-eglot-java-setup~ function:
+~eglot-java~ is required (not plain ~eglot~). JAL integrates automatically once
+~eglot-java~ is loaded.
 
 #+begin_src elisp
-(use-package eglot
+(use-package jal
   :ensure t
-  :init
-  (jal-eglot-java-setup
-   '(
-     ("lombok")
-     ("org.jacoco.agent" :jar-path "org/jacoco/%a/%v/%a-%v-runtime.jar")
-    )))
+  :config
+  (setq jal-additional-agents '(("my-custom-agent")))) ; Optional
+
+(use-package eglot-java
+  :ensure t
+  :hook ((java-mode    . eglot-java-mode)
+         (java-ts-mode . eglot-java-mode)))
 #+end_src
 
-This function:
-1. Sets ~jal-agents-config~.
-2. Modifies ~eglot-server-programs~ to inject the agent arguments into the JDTLS command.
-3. Adds a hook to ~eglot-connect-hook~ to scan for agents.
+Internally JAL installs an ~:around~ advice on ~eglot-java--eclipse-jdt-contact~
+that dynamically extends ~eglot-java-eclipse-jdt-args~ with the resolved
+~-javaagent~ arguments for each server startup.
+
+** How agent detection works
+
+1. When the LSP/Eglot server starts, the advised function checks for a
+   project-local cache file (~.jal-config.el~).
+2. If the cache is missing or empty, JAL prompts once: *"Do you want to setup
+   java agents for this project?"* (Only prompts when inside a Maven or Gradle
+   project.)
+3. On confirmation, JAL runs ~mvn dependency:list~ or a Gradle init script to
+   resolve the agent JAR paths and versions.
+4. Results are written to ~.jal-config.el~ in the project root and reused on
+   future startups.
+
+You can also run detection manually: ~M-x jal-detect-java-agents~.
 
 ** Examples
 
 *** Maven Project with Lombok
 
-If your `pom.xml` has:
-
-#+begin_src xml
-<dependency>
-    <groupId>org.projectlombok</groupId>
-    <artifactId>lombok</artifactId>
-    <version>1.18.30</version>
-    <scope>provided</scope>
-</dependency>
-#+end_src
-
-Configure JAL as:
+If your ~pom.xml~ declares Lombok in its dependencies:
 
 #+begin_src elisp
-(jal-lsp-java-setup '(("lombok")))
+(use-package jal
+  :ensure t)
 #+end_src
 
-*** Gradle Project with Custom Agent
+JAL will find it automatically -- Lombok is in ~jal-known-agents~, so no custom
+configuration is needed.
 
-If your `build.gradle` has:
-
-#+begin_src groovy
-dependencies {
-  javaAgent "com.example:my-agent:1.0.0"
-}
-#+end_src
-
-And the JAR is named `my-agent-all-1.0.0.jar`:
+*** Gradle Project with JaCoCo (custom output file)
 
 #+begin_src elisp
-(jal-lsp-java-setup
- '(("my-agent" :jar-path "%a-all-%v.jar")))
+(use-package jal
+  :ensure t
+  :config
+  (setq jal-additional-agents
+        '(("org.jacoco.agent" :params "destfile=build/reports/jacoco.exec"))))
+#+end_src
+
+*** Custom Agent with Absolute JAR Path
+
+#+begin_src elisp
+(use-package jal
+  :config
+  (setq jal-additional-agents
+        '(("my-agent" :jar-path "/opt/agents/my-agent.jar" :params "config=prod"))))
 #+end_src
 
 *** Interactive Detection
 
-You can also manually detect an agent in the current project:
-~M-x jal-detect-agent-interactively~ -> Enter artifact ID (e.g., "lombok").
+Manually detect a single agent in the current project: ~M-x
+jal-detect-agent-interactively~ -> enter the artifact ID (e.g., ~lombok~).
 
 ** Manual Configuration
 
-If you didn't configure agent parameters during setup, you can manually edit the ~.jal-config.el~ file in your project root. This file is safe to commit to your repository if it doesn't contain any secrets.
+The cache file ~.jal-config.el~ in your project root can be edited by hand or
+committed to your repository (it contains no secrets by default). But we
+recommend adding it to ~.gitignore~ to avoid merge conflicts, as it may contain
+paths specific to your local environment, and due to the possibility of agents
+with parameters that differ between developers or that contains secrets.
 
 Example ~.jal-config.el~:
 
 #+begin_src elisp
-(("lombok"
-  "/home/user/.m2/repository/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar"
-  ""
-  "1.18.30")
- ("org.jacoco.agent"
-  "/home/user/.m2/repository/org/jacoco/org.jacoco.agent/0.8.11/org.jacoco.agent-0.8.11-runtime.jar"
-  "destfile=target/jacoco.exec"
-  "0.8.11"))
-#+end_src
+(("/usr/lib/jvm/java-21/bin/java"
+  (("lombok"
+    "/home/user/.m2/repository/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar"
+    ""
+    "1.18.30")
+   ("org.jacoco.agent"
+    "/home/user/.m2/repository/org/jacoco/org.jacoco.agent/0.8.11/org.jacoco.agent-0.8.11-runtime.jar"
+    "destfile=target/jacoco.exec"
+    "0.8.11"))))
 
-Each entry is: ~(ARTIFACT-ID PATH PARAMS VERSION)~
+#+end_src
 
 ** Limitations
 
-- *Gradle Support*: Gradle support needs work, as it can use different repository folders depending on configuration.
-- *Eglot Integration*: Eglot configuration needs more testing.
-- *Secrets Management*: There is no approach yet to allow ~.jal-config.el~ without exposing secrets if agent options require them.
+- *Secrets Management*: There is no approach yet to allow ~.jal-config.el~ to
+  avoid exposing agent options that contain sensitive values. Therefore, we
+  recommend adding ~.jal-config.el~ to ~.gitignore~ to avoid accidentally
+  committing secrets or environment-specific paths. If this is a limitation for
+  your use case, please open an issue to discuss possible solutions.
