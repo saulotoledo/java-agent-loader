@@ -201,8 +201,18 @@ Example ~.jal-config.el~:
     "/home/user/.m2/repository/org/jacoco/org.jacoco.agent/0.8.11/org.jacoco.agent-0.8.11-runtime.jar"
     "destfile=target/jacoco.exec"
     "0.8.11"))))
-
 #+end_src
+
+Each agent entry inside the scope is: ~(ARTIFACT-ID PATH PARAMS VERSION)~
+
+** Running Tests
+
+#+begin_src shell
+make test
+#+end_src
+
+This byte-compiles all ~.el~ files and runs the ERT test suite in a clean batch
+Emacs session.
 
 ** Limitations
 
