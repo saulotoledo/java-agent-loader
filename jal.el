@@ -20,8 +20,12 @@
 (require 'jal-build-maven)
 (require 'jal-build-gradle)
 
-(autoload 'jal-lsp-java-setup "jal-client-lsp" "Configures JAL for lsp-java.")
 (autoload 'jal-eglot-java-setup "jal-client-eglot" "Configures JAL for eglot.")
+(declare-function jal-lsp-java-setup  "jal-client-lsp")
+(with-eval-after-load 'lsp-java
+  (require 'jal-client-lsp)
+  (jal-lsp-java-setup))
+
 
 ;; ====================================================================
 ;; Build System Specific Detection Helpers

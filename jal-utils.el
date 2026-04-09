@@ -14,6 +14,17 @@
 
 (declare-function jal--detect-build-system "jal")
 
+(defun jal--warn-interface-changed (fn-name package-name)
+  "Warn that FN-NAME from PACKAGE-NAME is missing, suggesting to file an issue."
+  (let ((msg (format (concat "JAL: `%s' is not defined. "
+                             "%s may have changed its internal interface. "
+                             "JAL will not inject javaagent arguments into JDTLS. "
+                             "Please file an issue at "
+                             "https://github.com/saulotoledo/java-agent-loader "
+                             "including your %s package version.")
+                     fn-name package-name package-name)))
+    (display-warning 'jal msg :warning)))
+
 (defun jal--current-java-key ()
   "Return a canonical key identifying the currently active JVM.
 Calls `jal-current-java-key-function' (set by the active client module)

@@ -34,6 +34,22 @@ PROPS is a property list supporting the following keys:
   :type '(alist :key-type string :value-type (plist :key-type symbol :value-type (choice string (const :tag "None" nil))))
   :group 'jal)
 
+(defcustom jal-additional-agents nil
+  "Additional agents merged with `jal-known-agents'.
+Each element is either:
+- (ARTIFACT-ID . PROPS) : Override a known agent or add a new one.
+- (ARTIFACT-ID)         : Add an agent with all defaults.
+
+PROPS is a plist with keys :params and :jar-path.
+An entry whose ARTIFACT-ID matches a known agent overrides its defaults.
+
+Set this before lsp-java or eglot-java loads, e.g. in a
+`use-package jal :config' block."
+  :type '(alist :key-type string
+                :value-type (plist :key-type symbol
+                                   :value-type (choice string (const :tag "None" nil))))
+  :group 'jal)
+
 (defcustom jal-agents-detected-hook nil
   "Hook run after agents are successfully detected and cached.
 This is useful for restarting the LSP/Eglot server to pick up the new agents."
