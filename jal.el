@@ -260,7 +260,8 @@ Returns the list of agent configurations found, or nil."
                                            (jal--detect-build-system project-root))))
                     (if (not build-system)
                         (message "JAL: Not a Maven/Gradle project, skipping agent setup.")
-                      (if (y-or-n-p "JAL: Do you want to setup java agents for this project? ")
+                      (if (or jal-auto-setup
+                              (y-or-n-p "JAL: Do you want to setup java agents for this project? "))
                           (jal-detect-java-agents)
                         ;; User declined — forget this scope so the question is
                         ;; asked again on the next Emacs session.

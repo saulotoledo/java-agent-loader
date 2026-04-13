@@ -51,13 +51,18 @@ Clone the repository and add it to your ~load-path~.
 JAL requires no mandatory configuration. By default it looks for all agents
 listed in ~jal-known-agents~ (Lombok, OpenTelemetry Java Agent, JaCoCo).
 
+By default, JAL asks once per project: *"Do you want to setup java agents for
+this project?"* To run detection automatically without prompting, set
+~jal-auto-setup~ to ~t~.
+
 To add agents or override known-agent defaults, set ~jal-additional-agents~
-*before* ~lsp-java~ or ~eglot-java~ is loaded:
+*before* ~lsp-java~ or ~eglot-java~ is loaded.
 
 #+begin_src elisp
 (use-package jal
   :ensure t
   :config
+  (setq jal-auto-setup t)
   (setq jal-additional-agents
         '(
           ;; Override a known agent with custom parameters
@@ -135,7 +140,8 @@ that dynamically extends ~eglot-java-eclipse-jdt-args~ with the resolved
    project-local cache file (~.jal-config.el~).
 2. If the cache is missing or empty, JAL prompts once: *"Do you want to setup
    java agents for this project?"* (Only prompts when inside a Maven or Gradle
-   project.)
+   project.) Set ~jal-auto-setup~ to ~t~ to skip this prompt and always run
+   detection automatically.
 3. On confirmation, JAL runs ~mvn dependency:list~ or a Gradle init script to
    resolve the agent JAR paths and versions.
 4. Results are written to ~.jal-config.el~ in the project root and reused on

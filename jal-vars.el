@@ -50,6 +50,13 @@ Set this before lsp-java or eglot-java loads, e.g. in a
                                    :value-type (choice string (const :tag "None" nil))))
   :group 'jal)
 
+(defcustom jal-auto-setup nil
+  "When non-nil, automatically run agent detection without prompting.
+By default JAL asks whether to set up agents for a new project.
+Set this to t to skip the confirmation and always run detection."
+  :type 'boolean
+  :group 'jal)
+
 (defcustom jal-agents-detected-hook nil
   "Hook run after agents are successfully detected and cached.
 This is useful for restarting the LSP/Eglot server to pick up the new agents."
