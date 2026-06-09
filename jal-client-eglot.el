@@ -23,7 +23,7 @@ arguments for the current project, leaving the variable itself unchanged.
 ORIG-FN is the original function being advised.
 &REST ARGS contains the arguments passed to the advised function."
   (let ((eglot-java-eclipse-jdt-args
-         (append eglot-java-eclipse-jdt-args (jal-get-vmargs-with-javaagents))))
+          (append eglot-java-eclipse-jdt-args (jal-get-vmargs-with-javaagents))))
     (apply orig-fn args)))
 
 (defun jal--eglot-current-java-key ()
@@ -31,16 +31,16 @@ ORIG-FN is the original function being advised.
 Uses `eglot-java--find-java-program-from-alternatives' when available,
 falling back to the first `java' on PATH."
   (if (fboundp 'eglot-java--find-java-program-from-alternatives)
-      (condition-case nil
-          (eglot-java--find-java-program-from-alternatives)
-        (error (executable-find "java")))
+    (condition-case nil
+      (eglot-java--find-java-program-from-alternatives)
+      (error (executable-find "java")))
     (executable-find "java")))
 
 (defun jal--eglot-reconnect ()
   "Reconnect eglot if active."
   (when (and (bound-and-true-p eglot-managed-mode)
-             (fboundp 'eglot-reconnect)
-             (fboundp 'eglot-current-server))
+          (fboundp 'eglot-reconnect)
+          (fboundp 'eglot-current-server))
     (let ((server (eglot-current-server)))
       (when server
         ;; Clear the session guard so the post-reconnect hook re-runs and picks
@@ -59,7 +59,7 @@ Runs on `eglot-connect-hook' so a package update that removes or renames
 the function is caught on the next server connection.
 Warns at most once per Emacs session to avoid repeat messages on reconnects."
   (unless (or (fboundp 'eglot-java--eclipse-jdt-contact)
-              jal--eglot-java-interface-warning-issued)
+            jal--eglot-java-interface-warning-issued)
     (setq jal--eglot-java-interface-warning-issued t)
     (jal--warn-interface-changed "eglot-java--eclipse-jdt-contact" "eglot-java")))
 

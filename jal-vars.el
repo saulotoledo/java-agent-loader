@@ -32,9 +32,9 @@ Properties (as plist) support the following keys:
               Pattern placeholders: %a = artifactId, %v = version, %g = groupId.
               Default: \"%a-%v.jar\"."
   :type '(repeat (cons :tag "Agent"
-                       (string :tag "Artifact ID")
-                       (plist :key-type symbol
-                              :value-type (choice string (const :tag "None" nil)))))
+                   (string :tag "Artifact ID")
+                   (plist :key-type symbol
+                     :value-type (choice string (const :tag "None" nil)))))
   :group 'jal)
 
 (defcustom jal-additional-agents nil
@@ -49,9 +49,9 @@ An entry whose ARTIFACT-ID matches a known agent overrides its defaults.
 Set this before lsp-java or eglot-java loads, typically via
 `use-package jal :custom'."
   :type '(repeat (cons :tag "Agent"
-                       (string :tag "Artifact ID")
-                       (plist :key-type symbol
-                              :value-type (choice string (const :tag "None" nil)))))
+                   (string :tag "Artifact ID")
+                   (plist :key-type symbol
+                     :value-type (choice string (const :tag "None" nil)))))
   :group 'jal)
 
 (defcustom jal-auto-setup nil

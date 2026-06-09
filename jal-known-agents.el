@@ -8,9 +8,10 @@
 ;;; Code:
 
 (defvar jal-known-agents
-  '(("lombok" :jar-path "org/projectlombok/%a/%v/%a-%v.jar" :params "")
-    ("opentelemetry-javaagent" :jar-path "io/opentelemetry/javaagent/%a/%v/%a-%v.jar")
-    ("org.jacoco.agent" :jar-path "org/jacoco/%a/%v/%a-%v-runtime.jar"))
+  '(
+     ("lombok" :jar-path "org/projectlombok/%a/%v/%a-%v.jar" :params "")
+     ("opentelemetry-javaagent" :jar-path "io/opentelemetry/javaagent/%a/%v/%a-%v.jar")
+     ("org.jacoco.agent" :jar-path "org/jacoco/%a/%v/%a-%v-runtime.jar"))
   "Registry of known Java agents with default configurations.
 Each entry is either:
 - (ARTIFACT-ID) : Use defaults

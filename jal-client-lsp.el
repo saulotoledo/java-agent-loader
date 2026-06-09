@@ -20,9 +20,10 @@
   "Return the java binary path configured for lsp-java.
 Reads `lsp-java-java-path'; falls back to the first `java' on PATH
 when it is unset or set to the bare string `java'."
-  (let ((configured (and (bound-and-true-p lsp-java-java-path)
-                         (not (string= lsp-java-java-path "java"))
-                         lsp-java-java-path)))
+  (let ((configured (and
+                      (bound-and-true-p lsp-java-java-path)
+                      (not (string= lsp-java-java-path "java"))
+                      lsp-java-java-path)))
     (or configured (executable-find "java"))))
 
 (defun jal--lsp-java-ls-command-advice (orig-fn &rest args)
@@ -36,9 +37,10 @@ ORIG-FN is the original function being advised.
 
 (defun jal--lsp-java-restart ()
   "Restart lsp-java workspace if active."
-  (when (and (bound-and-true-p lsp-mode)
-             (fboundp 'lsp-workspace-restart)
-             (fboundp 'lsp-workspaces))
+  (when (and
+          (bound-and-true-p lsp-mode)
+          (fboundp 'lsp-workspace-restart)
+          (fboundp 'lsp-workspaces))
     ;; Clear the session guard so the post-restart hook re-runs and picks up
     ;; the freshly written cache instead of skipping silently.
     (clrhash jal--configured-scopes)
@@ -56,7 +58,7 @@ Runs on `lsp-after-initialize-hook' so a package update that removes or
 renames the function is caught on the next server start.
 Warns at most once per Emacs session to avoid repeat messages on restarts."
   (unless (or (fboundp 'lsp-java--ls-command)
-              jal--lsp-java-interface-warning-issued)
+            jal--lsp-java-interface-warning-issued)
     (setq jal--lsp-java-interface-warning-issued t)
     (jal--warn-interface-changed "lsp-java--ls-command" "lsp-java")))
 
