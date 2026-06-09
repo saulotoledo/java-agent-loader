@@ -20,34 +20,38 @@ Use only within `jal' functions; do not reference externally.")
 (defcustom jal-agents-config nil
   "List of agents to detect.
 Elements can be:
-- (ARTIFACT-ID . PROPS) : Specify properties.
-- (ARTIFACT-ID)         : Use defaults (no properties).
+- (ARTIFACT-ID :key value ...) : Specify properties.
+- (ARTIFACT-ID)                : Use defaults (no properties).
 
-PROPS is a property list supporting the following keys:
-  :params   - Optional string of arguments to append (e.g., \"=destfile=...\").
+Properties (as plist) support the following keys:
+  :params   - Optional string of arguments to append (e.g., \"destfile=...\").
   :jar-path - Optional format string for the JAR filename OR an absolute path.
               If it starts with \"/\", it is treated as an absolute path.
               Otherwise, it is treated as a pattern relative to the local
               repository.
               Pattern placeholders: %a = artifactId, %v = version, %g = groupId.
               Default: \"%a-%v.jar\"."
-  :type '(alist :key-type string :value-type (plist :key-type symbol :value-type (choice string (const :tag "None" nil))))
+  :type '(repeat (cons :tag "Agent"
+                       (string :tag "Artifact ID")
+                       (plist :key-type symbol
+                              :value-type (choice string (const :tag "None" nil)))))
   :group 'jal)
 
 (defcustom jal-additional-agents nil
   "Additional agents merged with `jal-known-agents'.
 Each element is either:
-- (ARTIFACT-ID . PROPS) : Override a known agent or add a new one.
-- (ARTIFACT-ID)         : Add an agent with all defaults.
+- (ARTIFACT-ID :key value ...) : Override a known agent or add a new one.
+- (ARTIFACT-ID)                : Add an agent with all defaults.
 
-PROPS is a plist with keys :params and :jar-path.
+Properties (as plist) can include :params and :jar-path.
 An entry whose ARTIFACT-ID matches a known agent overrides its defaults.
 
-Set this before lsp-java or eglot-java loads, e.g. in a
-`use-package jal :config' block."
-  :type '(alist :key-type string
-                :value-type (plist :key-type symbol
-                                   :value-type (choice string (const :tag "None" nil))))
+Set this before lsp-java or eglot-java loads, typically via
+`use-package jal :custom'."
+  :type '(repeat (cons :tag "Agent"
+                       (string :tag "Artifact ID")
+                       (plist :key-type symbol
+                              :value-type (choice string (const :tag "None" nil)))))
   :group 'jal)
 
 (defcustom jal-auto-setup nil

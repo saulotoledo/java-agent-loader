@@ -48,8 +48,8 @@ Clone the repository to a local directory and point ~use-package~ at it:
 #+begin_src elisp
 (use-package jal
   :load-path "/path/to/java-agent-loader"
-  :config
-  (setq jal-auto-setup t))
+  :custom
+  (jal-auto-setup t))
 #+end_src
 
 *** Using ~use-package~ with ~package-vc~ (Emacs 29+)
@@ -59,8 +59,8 @@ No clone needed: Emacs fetches the package directly from GitHub:
 #+begin_src elisp
 (use-package jal
   :vc (:url "https://github.com/saulotoledo/java-agent-loader" :rev :newest)
-  :config
-  (setq jal-auto-setup t))
+  :custom
+  (jal-auto-setup t))
 #+end_src
 
 *** Using straight.el
@@ -85,9 +85,9 @@ To add agents or override known-agent defaults, set ~jal-additional-agents~
 #+begin_src elisp
 (use-package jal
   :ensure t
-  :config
-  (setq jal-auto-setup t)
-  (setq jal-additional-agents
+  :custom
+  (jal-auto-setup t)
+  (jal-additional-agents
         '(
           ;; Override a known agent with custom parameters
           ("org.jacoco.agent" :params "destfile=target/jacoco.exec")
@@ -124,8 +124,8 @@ Just load JAL before ~lsp-java~. JAL integrates automatically.
 #+begin_src elisp
 (use-package jal
   :ensure t
-  :config
-  (setq jal-additional-agents '(("my-custom-agent")))) ; Optional
+  :custom
+  (jal-additional-agents '(("my-custom-agent")))) ; Optional
 
 (use-package lsp-java
   :ensure t
@@ -145,8 +145,8 @@ for each server startup.
 #+begin_src elisp
 (use-package jal
   :ensure t
-  :config
-  (setq jal-additional-agents '(("my-custom-agent")))) ; Optional
+  :custom
+  (jal-additional-agents '(("my-custom-agent")))) ; Optional
 
 (use-package eglot-java
   :ensure t
@@ -181,7 +181,9 @@ If your ~pom.xml~ declares Lombok in its dependencies:
 
 #+begin_src elisp
 (use-package jal
-  :ensure t)
+  :ensure t
+  :custom
+  (jal-auto-setup t))
 #+end_src
 
 JAL will find it automatically -- Lombok is in ~jal-known-agents~, so no custom
@@ -192,8 +194,8 @@ configuration is needed.
 #+begin_src elisp
 (use-package jal
   :ensure t
-  :config
-  (setq jal-additional-agents
+  :custom
+  (jal-additional-agents
         '(("org.jacoco.agent" :params "destfile=build/reports/jacoco.exec"))))
 #+end_src
 
@@ -201,9 +203,8 @@ configuration is needed.
 
 #+begin_src elisp
 (use-package jal
-  :config
-  (setq jal-additional-agents
-        '(("my-agent" :jar-path "/opt/agents/my-agent.jar" :params "config=prod"))))
+  :custom
+  (jal-additional-agents '(("my-agent" :jar-path "/opt/agents/my-agent.jar" :params "config=prod"))))
 #+end_src
 
 *** Interactive Detection
