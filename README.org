@@ -1,8 +1,8 @@
 * Java Agent Loader (JAL)
 
 #+begin_quote
-*WARNING*: This package is currently under active development and will be
-released for public usage soon. Until then, it might contain breaking changes.
+*INFO*: Gradle support is experimental. Please let us know about any issues or
+suggestions to help us improve it!
 #+end_quote
 
 ~jal~ is an Emacs package designed to simplify the injection of Java agents
