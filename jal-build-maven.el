@@ -1,26 +1,27 @@
-;;; java-agent-loader-build-maven.el --- Maven detection for Java Agent Loader -*- lexical-binding: t; -*-
+;;; jal-build-maven.el --- Maven detection for Java Agent Loader (JAL) -*- lexical-binding: t; -*-
 
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify it under
+;; the terms of the GNU General Public License as published by the Free Software
+;; Foundation, either version 3 of the License, or (at your option) any later
+;; version.
 
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
 
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; You should have received a copy of the GNU General Public License along with
+;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
 
 ;;; Commentary:
+
 ;; Maven detection logic for JAL.
 
 ;;; Code:
 
-(require 'java-agent-loader-utils)
+(require 'jal-utils)
 
 (defun jal--maven-extract-agent-dependency-info (mvn-output agent-id)
   "Extract the maven agent AGENT-ID from MVN-OUTPUT.
@@ -143,5 +144,5 @@ or nil on failure."
                     (funcall callback (nreverse found-agents))))))))))))
 
 
-(provide 'java-agent-loader-build-maven)
-;;; java-agent-loader-build-maven.el ends here
+(provide 'jal-build-maven)
+;;; jal-build-maven.el ends here

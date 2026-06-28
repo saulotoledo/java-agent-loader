@@ -67,7 +67,7 @@ No clone needed: Emacs fetches the package directly from GitHub:
 
 #+begin_src elisp
 (straight-use-package
- '(java-agent-loader :type git :host github :repo "saulotoledo/java-agent-loader"))
+ '(jal :type git :host github :repo "saulotoledo/java-agent-loader"))
 #+end_src
 
 ** Configuration

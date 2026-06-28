@@ -1,4 +1,4 @@
-;;; java-agent-loader-test.el --- ERT tests for Java Agent Loader -*- lexical-binding: t; -*-
+;;; jal-test.el --- ERT tests for Java Agent Loader (JAL) -*- lexical-binding: t; -*-
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@
 ;; jal-vars
 ;; ---------------------------------------------------------------------------
 
-(require 'java-agent-loader-vars)
+(require 'jal-vars)
 
 (ert-deftest jal-test/vars-defaults ()
   "Core defcustoms start at sensible defaults."
@@ -58,7 +58,7 @@
 ;; jal-known-agents
 ;; ---------------------------------------------------------------------------
 
-(require 'java-agent-loader-known-agents)
+(require 'jal-known-agents)
 
 (ert-deftest jal-test/known-agents-not-empty ()
   "`jal-known-agents' contains at least the bundled agents."
@@ -69,7 +69,7 @@
 ;; jal-utils / jal--merge-agent-configs
 ;; ---------------------------------------------------------------------------
 
-(require 'java-agent-loader-utils)
+(require 'jal-utils)
 
 (ert-deftest jal-test/merge-empty-user-agents ()
   "Merging nil user agents returns known agents unchanged."
@@ -102,7 +102,7 @@
 ;; jal--detect-build-system
 ;; ---------------------------------------------------------------------------
 
-(require 'java-agent-loader)
+(require 'jal)
 
 (ert-deftest jal-test/detect-build-system-maven ()
   "Detects Maven when pom.xml is present."
@@ -154,7 +154,7 @@
   "Return the list of command-line arguments to start JDTLS."
   '("java" "-jar" "jdtls.jar"))
 
-(require 'java-agent-loader-client-lsp)
+(require 'jal-client-lsp)
 
 (ert-deftest jal-test/lsp-setup-installs-advice ()
   "`jal-lsp-java-setup' installs the around advice on lsp-java--ls-command."
@@ -235,7 +235,7 @@ The return value is a cons cell as expected by Eglot’s server connection logic
 Returns the first matching executable in the current PATH."
   (executable-find "java"))
 
-(require 'java-agent-loader-client-eglot)
+(require 'jal-client-eglot)
 
 (ert-deftest jal-test/eglot-setup-installs-advice ()
   "`jal-eglot-java-setup' installs the around advice on eglot-java--eclipse-jdt-contact."
@@ -301,7 +301,7 @@ Returns the first matching executable in the current PATH."
 ;; jal-build-gradle helpers
 ;; ---------------------------------------------------------------------------
 
-(require 'java-agent-loader-build-gradle)
+(require 'jal-build-gradle)
 
 (ert-deftest jal-test/gradle-parse-empty-output ()
   "Parsing empty Gradle init output returns nil."
@@ -340,7 +340,7 @@ Returns the first matching executable in the current PATH."
 ;; jal-build-maven helpers
 ;; ---------------------------------------------------------------------------
 
-(require 'java-agent-loader-build-maven)
+(require 'jal-build-maven)
 
 (ert-deftest jal-test/maven-extract-version-3-parts ()
   "Extracts version from 3-part G:A:V coordinate."
@@ -368,5 +368,5 @@ Returns the first matching executable in the current PATH."
   (let ((output "[INFO] BUILD SUCCESS\n[INFO] BUILD SUCCESS"))
     (should (null (jal--maven-extract-agent-dependency-info output "lombok")))))
 
-(provide 'java-agent-loader-test)
-;;; java-agent-loader-test.el ends here
+(provide 'jal-test)
+;;; jal-test.el ends here

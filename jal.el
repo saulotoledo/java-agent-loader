@@ -1,37 +1,45 @@
-;;; java-agent-loader.el --- Java Agent Loader for JDTLS -*- lexical-binding: t; -*-
+;;; jal.el --- Java Agent Loader (JAL) for JDTLS -*- lexical-binding: t; -*-
 
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify it under
+;; the terms of the GNU General Public License as published by the Free Software
+;; Foundation, either version 3 of the License, or (at your option) any later
+;; version.
 
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
 
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; You should have received a copy of the GNU General Public License along with
+;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 0.1.0
+;; Version: 1.0.0
 ;; Package-Requires: ((emacs "28.1"))
 ;; Keywords: java, languages, tools
 ;; URL: https://github.com/saulotoledo/java-agent-loader
 
 ;;; Commentary:
 
-;; This package manages the injection of -javaagent arguments for tools
-;; like Lombok and JaCoCo into the JDT Language Server (JDTLS) process,
-;; using a global cache to avoid slow Maven/Gradle lookups on every startup.
+;; NOTE: This package handles JVM instrumentation agents, NOT artificial
+;; intelligence (AI) agents.
+;;
+;; In the Java ecosystem, a "Java Agent" is a native JVM plugin that uses
+;; bytecode instrumentation to modify compiled code on the fly as it loads. It
+;; has no relation to AI assistants or LLM workflows.
+;;
+;; Java Agent Loader (JAL) manages the injection of these `-javaagent' arguments
+;; for tools like Lombok and JaCoCo into the JDT Language Server (JDTLS)
+;; process. It utilizes a global cache to avoid slow Maven or Gradle build tool
+;; lookups on every single project startup.
 
 ;;; Code:
 
 (require 'project)
-(require 'java-agent-loader-vars)
-(require 'java-agent-loader-utils)
-(require 'java-agent-loader-build-maven)
-(require 'java-agent-loader-build-gradle)
+(require 'jal-vars)
+(require 'jal-utils)
+(require 'jal-build-maven)
+(require 'jal-build-gradle)
 
 (declare-function jal-lsp-java-setup  "jal-client-lsp")
 (declare-function jal-eglot-java-setup "jal-client-eglot")
@@ -292,5 +300,5 @@ Returns the list of agent configurations found, or nil."
     (warn "JAL: Search for agents skipped. Prerequisites not met.")
     nil))
 
-(provide 'java-agent-loader)
-;;; java-agent-loader.el ends here
+(provide 'jal)
+;;; jal.el ends here

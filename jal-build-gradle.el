@@ -1,26 +1,27 @@
-;;; java-agent-loader-build-gradle.el --- Gradle detection for Java Agent Loader -*- lexical-binding: t; -*-
+;;; jal-build-gradle.el --- Gradle detection for Java Agent Loader (JAL) -*- lexical-binding: t; -*-
 
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify it under
+;; the terms of the GNU General Public License as published by the Free Software
+;; Foundation, either version 3 of the License, or (at your option) any later
+;; version.
 
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
 
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; You should have received a copy of the GNU General Public License along with
+;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
 
 ;;; Commentary:
-;; Gradle detection logic for JAL.
+
+;; Gradle detection logic for Java Agent Loader (JAL).
 
 ;;; Code:
 
-(require 'java-agent-loader-utils)
+(require 'jal-utils)
 
 (defun jal--gradle-write-init-script (agents-list)
   "Write a Gradle init script that lists resolved jars for AGENTS-LIST.
@@ -130,5 +131,5 @@ or nil on failure."
                     (funcall callback (nreverse found-agents))))))))))))
 
 
-(provide 'java-agent-loader-build-gradle)
-;;; java-agent-loader-build-gradle.el ends here
+(provide 'jal-build-gradle)
+;;; jal-build-gradle.el ends here

@@ -1,28 +1,30 @@
-;;; java-agent-loader-client-lsp.el --- LSP-Java integration for JAL -*- lexical-binding: t; -*-
+;;; jal-client-lsp.el --- LSP-Java integration for Java Agent Loader (JAL) -*- lexical-binding: t; -*-
 
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify it under
+;; the terms of the GNU General Public License as published by the Free Software
+;; Foundation, either version 3 of the License, or (at your option) any later
+;; version.
 
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
 
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; You should have received a copy of the GNU General Public License along with
+;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
 
 ;;; Commentary:
-;; This module provides integration between JAL and lsp-java.
+
+;; This module provides integration between Java Agent Loader (JAL) and
+;; `lsp-java'.
 
 ;;; Code:
 
-(require 'java-agent-loader)
-(require 'java-agent-loader-vars)
-(require 'java-agent-loader-known-agents)
+(require 'jal)
+(require 'jal-vars)
+(require 'jal-known-agents)
 
 (defvar lsp-java-vmargs)
 (defvar lsp-java-java-path)
@@ -89,5 +91,5 @@ This function is called automatically when lsp-java is loaded."
   (add-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents)
   (add-hook 'jal-agents-detected-hook #'jal--lsp-java-restart))
 
-(provide 'java-agent-loader-client-lsp)
-;;; java-agent-loader-client-lsp.el ends here
+(provide 'jal-client-lsp)
+;;; jal-client-lsp.el ends here

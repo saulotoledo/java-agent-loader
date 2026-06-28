@@ -1,27 +1,28 @@
-;;; java-agent-loader-utils.el --- Utilities for Java Agent Loader -*- lexical-binding: t; -*-
+;;; jal-utils.el --- Utilities for Java Agent Loader (JAL) -*- lexical-binding: t; -*-
 
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify it under
+;; the terms of the GNU General Public License as published by the Free Software
+;; Foundation, either version 3 of the License, or (at your option) any later
+;; version.
 
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
 
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; You should have received a copy of the GNU General Public License along with
+;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
 
 ;;; Commentary:
-;; Utility functions for jal.
+
+;; Utility functions for the Java Agent Loader (JAL).
 
 ;;; Code:
 
-(require 'java-agent-loader-vars)
-(require 'java-agent-loader-known-agents)
+(require 'jal-vars)
+(require 'jal-known-agents)
 (require 'project)
 (require 'format-spec)
 
@@ -205,5 +206,5 @@ in the new scoped format."
         (when (jal--config-scoped-p full-config)
           (cadr (assoc java-key full-config)))))))
 
-(provide 'java-agent-loader-utils)
-;;; java-agent-loader-utils.el ends here
+(provide 'jal-utils)
+;;; jal-utils.el ends here

@@ -1,31 +1,33 @@
-;;; java-agent-loader-client-eglot.el --- eglot-java integration for JAL -*- lexical-binding: t; -*-
+;;; jal-client-eglot.el --- eglot-java integration for Java Agent Loader (JAL) -*- lexical-binding: t; -*-
 
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify it under
+;; the terms of the GNU General Public License as published by the Free Software
+;; Foundation, either version 3 of the License, or (at your option) any later
+;; version.
 
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
 
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; You should have received a copy of the GNU General Public License along with
+;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
 
 ;;; Commentary:
-;; This module provides integration between JAL and eglot-java.
-;; It installs an around advice on `eglot-java--eclipse-jdt-contact' that
-;; dynamically extends `eglot-java-eclipse-jdt-args' with the javaagent
-;; arguments for the current project on every JDTLS startup.
+
+;; This module provides integration between Java Agent Loader (JAL) and
+;; `eglot-java'. It installs an around advice on
+;; `eglot-java--eclipse-jdt-contact' that dynamically extends
+;; `eglot-java-eclipse-jdt-args' with the javaagent arguments for the current
+;; project on every JDTLS startup.
 
 ;;; Code:
 
-(require 'java-agent-loader)
-(require 'java-agent-loader-vars)
-(require 'java-agent-loader-known-agents)
+(require 'jal)
+(require 'jal-vars)
+(require 'jal-known-agents)
 
 (defvar eglot-java-eclipse-jdt-args)
 
@@ -101,5 +103,5 @@ This function is called automatically when eglot-java is loaded."
   (add-hook 'jal-agents-detected-hook #'jal--eglot-reconnect)
   (setq jal--eglot-java-interface-warning-issued nil))
 
-(provide 'java-agent-loader-client-eglot)
-;;; java-agent-loader-client-eglot.el ends here
+(provide 'jal-client-eglot)
+;;; jal-client-eglot.el ends here

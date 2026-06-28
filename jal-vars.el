@@ -1,27 +1,28 @@
-;;; java-agent-loader-vars.el --- Variables for Java Agent Loader -*- lexical-binding: t; -*-
+;;; jal-vars.el --- Variables for Java Agent Loader (JAL) -*- lexical-binding: t; -*-
 
-;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify it under
+;; the terms of the GNU General Public License as published by the Free Software
+;; Foundation, either version 3 of the License, or (at your option) any later
+;; version.
 
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
 
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; You should have received a copy of the GNU General Public License along with
+;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
 
 ;;; Commentary:
-;; Variables and constants for jal.
+
+;; Variables and constants for the Java Agent Loader (JAL).
 
 ;;; Code:
 
 (defgroup jal nil
-  "Java Agent Loader for JDTLS."
+  "Java Agent Loader (JAL) for JDTLS."
   :group 'tools
   :prefix "jal-")
 
@@ -92,5 +93,5 @@ during setup so the core cache functions remain client-agnostic.
 When nil, `jal--current-java-key' falls back to resolving the first
 `java' found on PATH.")
 
-(provide 'java-agent-loader-vars)
-;;; java-agent-loader-vars.el ends here
+(provide 'jal-vars)
+;;; jal-vars.el ends here

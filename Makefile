@@ -13,7 +13,7 @@ test: compile ert
 ert:
 	$(EMACS) -Q -batch \
 	  -L $(JAL_DIR) \
-	  -l $(JAL_DIR)tests/java-agent-loader-test.el \
+	  -l $(JAL_DIR)tests/jal-test.el \
 	  -f ert-run-tests-batch-and-exit
 
 clean-elc:

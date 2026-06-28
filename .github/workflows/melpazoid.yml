@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
 
@@ -26,7 +26,7 @@ jobs:
       - name: Run melpazoid
         env:
           LOCAL_REPO: ${{ github.workspace }}
-          RECIPE: (java-agent-loader :fetcher github :repo "saulotoledo/java-agent-loader")
+          RECIPE: (jal :fetcher github :repo "saulotoledo/java-agent-loader")
           # Change to true when the package is already in MELPA:
           EXIST_OK: false
         run: echo $GITHUB_REF && make -C ~/melpazoid
