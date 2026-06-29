@@ -14,24 +14,30 @@
 ;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 1.0.0
+;; Version: 2.0.0
 ;; Package-Requires: ((emacs "28.1"))
 ;; Keywords: java, languages, tools
 ;; URL: https://github.com/saulotoledo/java-agent-loader
 
 ;;; Commentary:
 
-;; NOTE: This package handles JVM instrumentation agents, NOT artificial
-;; intelligence (AI) agents.
+;; NOTE: This package handles JVM bytecode instrumentation agents, NOT
+;; artificial intelligence (AI) agents.
+;;
+;; Java Agent Loader (JAL) automates the manual injection of `-javaagent'
+;; arguments into the JDT Language Server (JDTLS) process used by development
+;; environments like `lsp-java' or `eglot-java'.
 ;;
 ;; In the Java ecosystem, a "Java Agent" is a native JVM plugin that uses
-;; bytecode instrumentation to modify compiled code on the fly as it loads. It
-;; has no relation to AI assistants or LLM workflows.
+;; bytecode instrumentation to modify compiled code on the fly as it loads
+;; (powering tools like Lombok or JaCoCo). This technology dates back to 2004
+;; (Java 5) and has absolutely no relation to AI assistants, LLMs, or autonomous
+;; software agents.
 ;;
-;; Java Agent Loader (JAL) manages the injection of these `-javaagent' arguments
-;; for tools like Lombok and JaCoCo into the JDT Language Server (JDTLS)
-;; process. It utilizes a global cache to avoid slow Maven or Gradle build tool
-;; lookups on every single project startup.
+;; JAL bridges the gap between your project's Maven (pom.xml) or Gradle build
+;; configuration and your Emacs LSP client. It utilizes global path caching to
+;; completely bypass slow build-tool CLI lookups, ensuring your Java projects
+;; start instantly on every file visit.
 
 ;;; Code:
 
@@ -41,16 +47,10 @@
 (require 'jal-build-maven)
 (require 'jal-build-gradle)
 
-(declare-function jal-lsp-java-setup  "jal-client-lsp")
-(declare-function jal-eglot-java-setup "jal-client-eglot")
-
-(with-eval-after-load 'lsp-java
-  (require 'jal-client-lsp)
-  (jal-lsp-java-setup))
-
-(with-eval-after-load 'eglot-java
-  (require 'jal-client-eglot)
-  (jal-eglot-java-setup))
+(autoload 'jal-lsp-java-mode "jal-client-lsp"
+  "Toggle JAL integration with lsp-java (global minor mode)." t)
+(autoload 'jal-eglot-java-mode "jal-client-eglot"
+  "Toggle JAL integration with eglot-java (global minor mode)." t)
 
 ;; ====================================================================
 ;; Build System Specific Detection Helpers
@@ -191,7 +191,7 @@ and `jal-agents-detected-hook' is run once detection completes."
                 (not (y-or-n-p
                        (format "JAL: Agents already configured for Java at '%s'. Override? "
                          java-key))))
-          (user-error "JAL: Detection cancelled"))))
+          (user-error "JAL: Detection canceled"))))
 
     (if jal--detection-in-progress
       (message "JAL: Detection already in progress.")

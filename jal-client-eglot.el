@@ -89,19 +89,30 @@ Accepts the SERVER argument passed by the hook."
   (jal-find-and-configure-agents))
 
 ;;;###autoload
-(defun jal-eglot-java-setup ()
-  "Configure JAL for eglot-java.
-Merges `jal-additional-agents' with the known-agents registry and installs
-an around advice on `eglot-java--eclipse-jdt-contact' that dynamically
-appends the javaagent vmargs for the current project on every JDTLS startup.
-This function is called automatically when eglot-java is loaded."
-  (setq jal-agents-config (jal--merge-agent-configs jal-additional-agents))
-  (setq jal-current-java-key-function #'jal--eglot-current-java-key)
-  (advice-add 'eglot-java--eclipse-jdt-contact :around #'jal--eglot-java-contact-advice)
-  (add-hook 'eglot-connect-hook #'jal--eglot-connect-hook-check-interface)
-  (add-hook 'eglot-connect-hook #'jal--eglot-connect-hook-find-agents)
-  (add-hook 'jal-agents-detected-hook #'jal--eglot-reconnect)
-  (setq jal--eglot-java-interface-warning-issued nil))
+(define-minor-mode jal-eglot-java-mode
+  "Toggle JAL integration with eglot-java (a global minor mode).
+This is a GLOBAL mode: enable it once at the top level of your Emacs
+configuration with `(jal-eglot-java-mode 1)'. Do not add it to a buffer
+hook such as `java-mode-hook'. Use `-1' to disable. When enabled, merges
+`jal-additional-agents' with the known-agents registry and installs an
+around advice on `eglot-java--eclipse-jdt-contact' that dynamically
+appends the javaagent vmargs for the current project on every JDTLS
+startup. When disabled, the advice and hooks are removed."
+  :global t
+  :group 'jal
+  (if jal-eglot-java-mode
+    (progn
+      (setq jal-agents-config (jal--merge-agent-configs jal-additional-agents))
+      (setq jal-current-java-key-function #'jal--eglot-current-java-key)
+      (advice-add 'eglot-java--eclipse-jdt-contact :around #'jal--eglot-java-contact-advice)
+      (add-hook 'eglot-connect-hook #'jal--eglot-connect-hook-check-interface)
+      (add-hook 'eglot-connect-hook #'jal--eglot-connect-hook-find-agents)
+      (add-hook 'jal-agents-detected-hook #'jal--eglot-reconnect)
+      (setq jal--eglot-java-interface-warning-issued nil))
+    (advice-remove 'eglot-java--eclipse-jdt-contact #'jal--eglot-java-contact-advice)
+    (remove-hook 'eglot-connect-hook #'jal--eglot-connect-hook-check-interface)
+    (remove-hook 'eglot-connect-hook #'jal--eglot-connect-hook-find-agents)
+    (remove-hook 'jal-agents-detected-hook #'jal--eglot-reconnect)))
 
 (provide 'jal-client-eglot)
 ;;; jal-client-eglot.el ends here

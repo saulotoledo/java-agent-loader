@@ -5,41 +5,72 @@
 suggestions to help us improve it!
 #+end_quote
 
-~jal~ is an Emacs package designed to simplify the injection of Java agents
-(like Lombok, JaCoCo, etc.) into the JDT Language Server (JDTLS) process used by
-~lsp-java~ and ~eglot-java~.
+In the Java ecosystem, a Java Agent is a native JVM plugin that uses bytecode
+instrumentation to modify compiled code on the fly. To use one, you must
+explicitly pass its JAR file path via the ~-javaagent:/path/to/agent.jar~
+argument when launching the JVM.
 
-It automatically detects configured agents in your project's dependencies (Maven
-or Gradle), resolves their JAR paths, and appends the appropriate ~-javaagent~
-arguments to your LSP server's startup command.
+JAL is an Emacs package that automates this manual configuration for your
+development environment. It bridges the gap between your project’s build
+configuration and your LSP client (=lsp-java= or =eglot-java=) by managing that
+command-line injection behind the scenes.
+
+#+begin_quote
+*Historical Note*: In the Java ecosystem, "Java Agents" have existed as a core
+JVM bytecode technology since 2004 (Java 5)--long before the rise of modern AI.
+Despite the name, this package is strictly a utility for JVM bytecode
+instrumentation management and has absolutely no relation to AI assistants, LLM
+workflows, or autonomous software agents.
+#+end_quote
+
+** How It Works
+
+- /Automatic Detection/: When you open a Java project, JAL scans your Maven
+  (=pom.xml=) or Gradle (=build.gradle=) configuration to see which agents (like
+  Lombok or JaCoCo) your project requires.
+- /Resolution/: It resolves the exact absolute path to that agent's JAR file
+  inside your local build cache (e.g., ~$HOME/.m2/repository~ or
+  ~$HOME/.gradle/caches~).
+- /Injection/: It intercepts the startup hook of the JDT Language Server (JDTLS)
+  and appends the fully constructed ~-javaagent:/path/to/resolved.jar~ string
+  directly to the LSP server launch command.
+- /Global Caching/: To prevent Emacs from freezing while waiting for slow
+  Maven/Gradle CLI lookups on every single file visit, JAL caches these resolved
+  paths globally after the first run for instant subsequent startups.
 
 ** Features
 
-- /Automatic Detection/: Scans your =pom.xml= or =build.gradle= to find agent
-  versions.
-- /Caching/: Caches the resolved paths per project to avoid slow build system
-  calls on every startup.
-- /Flexible Configuration/: Supports custom JAR names, absolute paths, and agent
-  parameters.
-- /LSP Integration/: Works with both =lsp-java= and =eglot-java= via unobtrusive
-  advice.
-- /Safe/: Uses dynamic let-bindings in the advice -- never permanently mutates
-  =lsp-java-vmargs= or =eglot-java-eclipse-jdt-args=.
-- /Build-system aware/: Only prompts for agent setup when inside a Maven or
-  Gradle project.
+- /LSP Integration/: Works with both =lsp-java= and =eglot-java=.
+- /Zero Mutated State (Safe)/: Uses dynamic let-bindings during the injection
+  process--it never permanently alters or pollutes your global =lsp-java-vmargs=
+  or =eglot-java-eclipse-jdt-args=.
+- /Flexible Configuration/: Moves beyond default lookups to support custom agent
+  JAR names, absolute fallback paths, and specialized agent parameters.
+- /Build-System Aware/: Quietly stays out of your way; it only triggers agent
+  resolution when you are actively inside a valid Maven or Gradle project.
+- /Instant Startups/: Completely bypasses blocking build-tool CLI lookups on
+  daily file visits by leveraging project-specific path caching.
 
 ** Installation
 
 *** Prerequisites
 
-JAL integrates with either =lsp-java= or =eglot-java= (note: plain =eglot= is *not*
-supported: =eglot-java= is required). At least one of these must be installed:
+JAL integrates with either =lsp-java= or =eglot-java= (note: plain =eglot= is
+*not* supported: =eglot-java= is required). At least one of these must be
+installed:
 
 - [[https://github.com/emacs-lsp/lsp-java][lsp-java]] - LSP client for Java using JDTLS
 - [[https://github.com/yveszoundi/eglot-java][eglot-java]] - eglot-java extension for Emacs
 
-JAL must be loaded *before* =lsp-java= or =eglot-java= so the integration hooks are
-registered in time.
+Enable the matching integration mode once in your configuration:
+=jal-lsp-java-mode= for =lsp-java=, or =jal-eglot-java-mode= for =eglot-java=.
+
+#+begin_quote
+*NOTE*: Both modes are *global* minor modes. Enable them once at the top level
+of your configuration (for example in a =use-package :config= block) with
+=(jal-lsp-java-mode 1)= or =(jal-eglot-java-mode 1)=. Do *not* add them to a
+buffer-local hook such as =java-mode-hook=. Use =-1= to disable.
+#+end_quote
 
 *** Using ~use-package~ with a local clone
 
@@ -49,7 +80,9 @@ Clone the repository to a local directory and point ~use-package~ at it:
 (use-package jal
   :load-path "/path/to/java-agent-loader"
   :custom
-  (jal-auto-setup t))
+  (jal-auto-setup t)
+  :config
+  (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
 *** Using ~use-package~ with ~package-vc~ (Emacs 29+)
@@ -60,7 +93,9 @@ No clone needed: Emacs fetches the package directly from GitHub:
 (use-package jal
   :vc (:url "https://github.com/saulotoledo/java-agent-loader" :rev :newest)
   :custom
-  (jal-auto-setup t))
+  (jal-auto-setup t)
+  :config
+  (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
 *** Using straight.el
@@ -68,6 +103,7 @@ No clone needed: Emacs fetches the package directly from GitHub:
 #+begin_src elisp
 (straight-use-package
  '(jal :type git :host github :repo "saulotoledo/java-agent-loader"))
+(jal-lsp-java-mode 1) ; or (jal-eglot-java-mode 1)
 #+end_src
 
 ** Configuration
@@ -80,7 +116,7 @@ this project?"* To run detection automatically without prompting, set
 ~jal-auto-setup~ to ~t~.
 
 To add agents or override known-agent defaults, set ~jal-additional-agents~
-*before* ~lsp-java~ or ~eglot-java~ is loaded.
+*before* you enable ~jal-lsp-java-mode~ or ~jal-eglot-java-mode~.
 
 #+begin_src elisp
 (use-package jal
@@ -94,12 +130,14 @@ To add agents or override known-agent defaults, set ~jal-additional-agents~
 
           ;; Add an agent not in the known list
           ("my-custom-agent" :jar-path "/opt/agents/my-agent.jar")
-          )))
+          ))
+  :config
+  (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
-JAL hooks into ~lsp-java~ and ~eglot-java~ automatically via
-~with-eval-after-load~. No further setup is needed in the ~lsp-java~ or
-~eglot-java~ ~use-package~ blocks.
+JAL hooks into ~lsp-java~ and ~eglot-java~ once you enable ~jal-lsp-java-mode~
+or ~jal-eglot-java-mode~. These are global modes -- enable one once at the top
+level; no further setup is needed in the ~lsp-java~ or ~eglot-java~ blocks.
 
 *** Supported Properties for ~jal-additional-agents~
 
@@ -119,13 +157,15 @@ value ...)~ (override properties).
 
 ** Usage with lsp-java
 
-Just load JAL before ~lsp-java~. JAL integrates automatically.
+Enable ~jal-lsp-java-mode~ (a global mode) once in your configuration.
 
 #+begin_src elisp
 (use-package jal
   :ensure t
   :custom
-  (jal-additional-agents '(("my-custom-agent")))) ; Optional
+  (jal-additional-agents '(("my-custom-agent"))) ; Optional
+  :config
+  (jal-lsp-java-mode 1))
 
 (use-package lsp-java
   :ensure t
@@ -139,14 +179,16 @@ for each server startup.
 
 ** Usage with eglot-java
 
-~eglot-java~ is required (not plain ~eglot~). JAL integrates automatically once
-~eglot-java~ is loaded.
+~eglot-java~ is required (not plain ~eglot~). Enable ~jal-eglot-java-mode~ (a
+global mode) once in your configuration.
 
 #+begin_src elisp
 (use-package jal
   :ensure t
   :custom
-  (jal-additional-agents '(("my-custom-agent")))) ; Optional
+  (jal-additional-agents '(("my-custom-agent"))) ; Optional
+  :config
+  (jal-eglot-java-mode 1))
 
 (use-package eglot-java
   :ensure t
@@ -183,7 +225,9 @@ If your ~pom.xml~ declares Lombok in its dependencies:
 (use-package jal
   :ensure t
   :custom
-  (jal-auto-setup t))
+  (jal-auto-setup t)
+  :config
+  (jal-lsp-java-mode 1))
 #+end_src
 
 JAL will find it automatically -- Lombok is in ~jal-known-agents~, so no custom
@@ -196,7 +240,9 @@ configuration is needed.
   :ensure t
   :custom
   (jal-additional-agents
-        '(("org.jacoco.agent" :params "destfile=build/reports/jacoco.exec"))))
+        '(("org.jacoco.agent" :params "destfile=build/reports/jacoco.exec")))
+  :config
+  (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
 *** Custom Agent with Absolute JAR Path
@@ -204,7 +250,9 @@ configuration is needed.
 #+begin_src elisp
 (use-package jal
   :custom
-  (jal-additional-agents '(("my-agent" :jar-path "/opt/agents/my-agent.jar" :params "config=prod"))))
+  (jal-additional-agents '(("my-agent" :jar-path "/opt/agents/my-agent.jar" :params "config=prod")))
+  :config
+  (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
 *** Interactive Detection

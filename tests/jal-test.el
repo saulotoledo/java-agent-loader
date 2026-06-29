@@ -156,26 +156,53 @@
 
 (require 'jal-client-lsp)
 
-(ert-deftest jal-test/lsp-setup-installs-advice ()
-  "`jal-lsp-java-setup' installs the around advice on lsp-java--ls-command."
-  (jal-lsp-java-setup)
+(ert-deftest jal-test/lsp-mode-off-by-default ()
+  "Loading the package does not auto-enable lsp integration."
+  (should (null (default-value 'jal-lsp-java-mode))))
+
+(ert-deftest jal-test/lsp-mode-installs-advice ()
+  "`jal-lsp-java-mode' installs the around advice on lsp-java--ls-command."
+  (jal-lsp-java-mode 1)
   (should (advice-member-p #'jal--lsp-java-ls-command-advice 'lsp-java--ls-command))
   ;; Clean up
-  (advice-remove 'lsp-java--ls-command #'jal--lsp-java-ls-command-advice))
+  (jal-lsp-java-mode -1))
 
-(ert-deftest jal-test/lsp-setup-does-not-warn-when-function-missing ()
-  "`jal-lsp-java-setup' does not warn at setup time; warning is deferred to the hook."
+(ert-deftest jal-test/lsp-mode-off-removes-advice-and-hooks ()
+  "`jal-lsp-java-mode -1' removes the advice and all registered hooks."
+  (jal-lsp-java-mode 1)
+  (jal-lsp-java-mode -1)
+  (should-not (advice-member-p #'jal--lsp-java-ls-command-advice 'lsp-java--ls-command))
+  (should-not (memq #'jal--lsp-java-check-interface lsp-after-initialize-hook))
+  (should-not (memq #'jal-find-and-configure-agents lsp-after-initialize-hook))
+  (should-not (memq #'jal--lsp-java-restart jal-agents-detected-hook)))
+
+(ert-deftest jal-test/lsp-mode-toggle-is-idempotent ()
+  "Enabling twice does not stack advice or duplicate hooks; disabling cleans up."
+  (jal-lsp-java-mode 1)
+  (jal-lsp-java-mode 1)
+  (should jal-lsp-java-mode)
+  (should (= 1 (cl-count #'jal--lsp-java-check-interface lsp-after-initialize-hook)))
+  (jal-lsp-java-mode -1)
+  (should-not jal-lsp-java-mode)
+  (should-not (advice-member-p #'jal--lsp-java-ls-command-advice 'lsp-java--ls-command)))
+
+(ert-deftest jal-test/lsp-orig-callable-after-disable ()
+  "After disabling, lsp-java--ls-command still returns the bare command."
+  (jal-lsp-java-mode 1)
+  (jal-lsp-java-mode -1)
+  (should (equal '("java" "-jar" "jdtls.jar") (lsp-java--ls-command))))
+
+(ert-deftest jal-test/lsp-mode-does-not-warn-when-function-missing ()
+  "`jal-lsp-java-mode' does not warn at enable time; warn deferred to hook."
   (cl-letf (((symbol-function 'lsp-java--ls-command) nil))
     (let ((warned nil))
       (cl-letf (((symbol-function 'display-warning)
                   (lambda (_type msg &rest _) (setq warned msg))))
-        (jal-lsp-java-setup))
-      ;; No warning should be emitted during setup itself.
+        (jal-lsp-java-mode 1))
+      ;; No warning should be emitted during enable itself.
       (should (null warned))
       (should (memq #'jal--lsp-java-check-interface lsp-after-initialize-hook))))
-  (remove-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents)
-  (remove-hook 'lsp-after-initialize-hook #'jal--lsp-java-check-interface)
-  (advice-remove 'lsp-java--ls-command #'jal--lsp-java-ls-command-advice))
+  (jal-lsp-java-mode -1))
 
 (ert-deftest jal-test/lsp-check-interface-warns-when-function-missing ()
   "`jal--lsp-java-check-interface' warns when lsp-java--ls-command is not defined."
@@ -227,7 +254,7 @@
 
 (defun eglot-java--eclipse-jdt-contact (_interactive)
   "Return the contact specification for connecting to the JDTLS server with Eglot.
-The return value is a cons cell as expected by Eglot’s server connection logic."
+The return value is a cons cell as expected by Eglot's server connection logic."
   (cons 'eglot-java-eclipse-jdt '("java" "-jar" "jdtls.jar")))
 
 (defun eglot-java--find-java-program-from-alternatives ()
@@ -237,28 +264,56 @@ Returns the first matching executable in the current PATH."
 
 (require 'jal-client-eglot)
 
-(ert-deftest jal-test/eglot-setup-installs-advice ()
-  "`jal-eglot-java-setup' installs the around advice on eglot-java--eclipse-jdt-contact."
-  (jal-eglot-java-setup)
-  (should (advice-member-p #'jal--eglot-java-contact-advice 'eglot-java--eclipse-jdt-contact))
-  (advice-remove 'eglot-java--eclipse-jdt-contact #'jal--eglot-java-contact-advice))
+(ert-deftest jal-test/eglot-mode-off-by-default ()
+  "Loading the package does not auto-enable eglot integration."
+  (should (null (default-value 'jal-eglot-java-mode))))
 
-(ert-deftest jal-test/eglot-setup-does-not-warn-when-function-missing ()
-  "`jal-eglot-java-setup' does not warn at setup time; warning is deferred to the hook."
+(ert-deftest jal-test/eglot-mode-installs-advice ()
+  "`jal-eglot-java-mode' installs a proper eglot-java around advice."
+  (jal-eglot-java-mode 1)
+  (should (advice-member-p #'jal--eglot-java-contact-advice 'eglot-java--eclipse-jdt-contact))
+  (jal-eglot-java-mode -1))
+
+(ert-deftest jal-test/eglot-mode-off-removes-advice-and-hooks ()
+  "`jal-eglot-java-mode -1' removes the advice and all registered hooks."
+  (jal-eglot-java-mode 1)
+  (jal-eglot-java-mode -1)
+  (should-not (advice-member-p #'jal--eglot-java-contact-advice 'eglot-java--eclipse-jdt-contact))
+  (should-not (memq #'jal--eglot-connect-hook-check-interface eglot-connect-hook))
+  (should-not (memq #'jal--eglot-connect-hook-find-agents eglot-connect-hook))
+  (should-not (memq #'jal--eglot-reconnect jal-agents-detected-hook)))
+
+(ert-deftest jal-test/eglot-mode-toggle-is-idempotent ()
+  "Enabling twice does not stack advice or duplicate hooks; disabling cleans up."
+  (jal-eglot-java-mode 1)
+  (jal-eglot-java-mode 1)
+  (should jal-eglot-java-mode)
+  (should (= 1 (cl-count #'jal--eglot-connect-hook-check-interface eglot-connect-hook)))
+  (jal-eglot-java-mode -1)
+  (should-not jal-eglot-java-mode)
+  (should-not (advice-member-p #'jal--eglot-java-contact-advice 'eglot-java--eclipse-jdt-contact)))
+
+(ert-deftest jal-test/eglot-orig-callable-after-disable ()
+  "After disabling, eglot-java--eclipse-jdt-contact still returns the bare contact."
+  (jal-eglot-java-mode 1)
+  (jal-eglot-java-mode -1)
+  (should (equal (cons 'eglot-java-eclipse-jdt '("java" "-jar" "jdtls.jar"))
+            (eglot-java--eclipse-jdt-contact nil))))
+
+(ert-deftest jal-test/eglot-mode-does-not-warn-when-function-missing ()
+  "`jal-eglot-java-mode' does not warn at enable time; warn deferred to the hook."
   (cl-letf (((symbol-function 'eglot-java--eclipse-jdt-contact) nil))
     (let ((warned nil))
       (cl-letf (((symbol-function 'display-warning)
                   (lambda (_type msg &rest _) (setq warned msg))))
-        (jal-eglot-java-setup))
-      ;; No warning should be emitted during setup itself.
+        (jal-eglot-java-mode 1))
+      ;; No warning should be emitted during enable itself.
       (should (null warned))
       (should (memq #'jal--eglot-connect-hook-check-interface eglot-connect-hook))))
-  (remove-hook 'eglot-connect-hook #'jal--eglot-connect-hook-find-agents)
-  (remove-hook 'eglot-connect-hook #'jal--eglot-connect-hook-check-interface)
-  (advice-remove 'eglot-java--eclipse-jdt-contact #'jal--eglot-java-contact-advice))
+  (jal-eglot-java-mode -1))
 
 (ert-deftest jal-test/eglot-check-interface-warns-when-function-missing ()
-  "`jal--eglot-java-check-interface' warns when eglot-java--eclipse-jdt-contact is not defined."
+  "`jal--eglot-java-check-interface' warns when function is not defined."
   (let ((jal--eglot-java-interface-warning-issued nil))
     (cl-letf (((symbol-function 'eglot-java--eclipse-jdt-contact) nil))
       (let ((warned nil))
@@ -269,7 +324,7 @@ Returns the first matching executable in the current PATH."
         (should (string-match-p "eglot-java--eclipse-jdt-contact" warned))))))
 
 (ert-deftest jal-test/eglot-check-interface-silent-when-function-present ()
-  "`jal--eglot-java-check-interface' is silent when eglot-java--eclipse-jdt-contact exists."
+  "`jal--eglot-java-check-interface' is silent when funtion exists."
   (let ((jal--eglot-java-interface-warning-issued nil)
          (warned nil))
     (cl-letf (((symbol-function 'display-warning)
@@ -313,10 +368,10 @@ Returns the first matching executable in the current PATH."
           (result (jal--gradle-parse-init-output line)))
     (should (= 1 (length result)))
     (let ((entry (car result)))
-      (should (equal "lombok"                      (nth 0 entry)))
-      (should (equal "org.projectlombok"            (nth 1 entry)))
-      (should (equal "1.18.30"                      (nth 2 entry)))
-      (should (equal "/repo/lombok-1.18.30.jar"     (nth 3 entry))))))
+      (should (equal "lombok"                   (nth 0 entry)))
+      (should (equal "org.projectlombok"        (nth 1 entry)))
+      (should (equal "1.18.30"                  (nth 2 entry)))
+      (should (equal "/repo/lombok-1.18.30.jar" (nth 3 entry))))))
 
 (ert-deftest jal-test/gradle-parse-ignores-noise ()
   "Lines not starting with JAL_ARTIFACT are ignored."
