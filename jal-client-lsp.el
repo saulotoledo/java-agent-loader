@@ -78,18 +78,29 @@ Warns at most once per Emacs session to avoid repeat messages on restarts."
     (jal--warn-interface-changed "lsp-java--ls-command" "lsp-java")))
 
 ;;;###autoload
-(defun jal-lsp-java-setup ()
-  "Configure JAL for lsp-java.
-Merges `jal-additional-agents' with the known-agents registry and installs
-an around advice on `lsp-java--ls-command' that dynamically appends the
-javaagent vmargs for the current project on every JDTLS startup.
-This function is called automatically when lsp-java is loaded."
-  (setq jal-agents-config (jal--merge-agent-configs jal-additional-agents))
-  (setq jal-current-java-key-function #'jal--lsp-java-current-java-key)
-  (advice-add 'lsp-java--ls-command :around #'jal--lsp-java-ls-command-advice)
-  (add-hook 'lsp-after-initialize-hook #'jal--lsp-java-check-interface)
-  (add-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents)
-  (add-hook 'jal-agents-detected-hook #'jal--lsp-java-restart))
+(define-minor-mode jal-lsp-java-mode
+  "Toggle JAL integration with lsp-java (a global minor mode).
+This is a GLOBAL mode: enable it once at the top level of your Emacs
+configuration with `(jal-lsp-java-mode 1)'. Do not add it to a buffer
+hook such as `java-mode-hook'. Use `-1' to disable. When enabled, merges
+`jal-additional-agents' with the known-agents registry and installs an
+around advice on `lsp-java--ls-command' that dynamically appends the
+javaagent vmargs for the current project on every JDTLS startup. When
+disabled, the advice and hooks are removed."
+  :global t
+  :group 'jal
+  (if jal-lsp-java-mode
+    (progn
+      (setq jal-agents-config (jal--merge-agent-configs jal-additional-agents))
+      (setq jal-current-java-key-function #'jal--lsp-java-current-java-key)
+      (advice-add 'lsp-java--ls-command :around #'jal--lsp-java-ls-command-advice)
+      (add-hook 'lsp-after-initialize-hook #'jal--lsp-java-check-interface)
+      (add-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents)
+      (add-hook 'jal-agents-detected-hook #'jal--lsp-java-restart))
+    (advice-remove 'lsp-java--ls-command #'jal--lsp-java-ls-command-advice)
+    (remove-hook 'lsp-after-initialize-hook #'jal--lsp-java-check-interface)
+    (remove-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents)
+    (remove-hook 'jal-agents-detected-hook #'jal--lsp-java-restart)))
 
 (provide 'jal-client-lsp)
 ;;; jal-client-lsp.el ends here
