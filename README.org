@@ -1,3 +1,5 @@
+[[https://melpa.org/#/jal][file:https://melpa.org/packages/jal-badge.svg]]
+[[https://stable.melpa.org/#/jal][file:https://stable.melpa.org/packages/jal-badge.svg]]
 * Java Agent Loader (JAL)
 
 #+begin_quote
