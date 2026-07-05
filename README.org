@@ -74,26 +74,65 @@ of your configuration (for example in a =use-package :config= block) with
 buffer-local hook such as =java-mode-hook=. Use =-1= to disable.
 #+end_quote
 
-*** Using ~use-package~ with a local clone
+*** Installing via MELPA
 
-Clone the repository to a local directory and point ~use-package~ at it:
+This is the recommended method for installing this package.
+
+First, ensure you have the [[https://melpa.org/#/getting-started][MELPA repository]] configured in your Emacs.
+If you haven't already, add this to your init file:
+
+#+begin_src elisp
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(package-initialize)
+#+end_src
+
+Then install the package:
+
+#+begin_src elisp
+M-x package-install RET jal RET
+#+end_src
+
+JAL must be enabled to work. Here is a configuration example using
+`use-package`:
 
 #+begin_src elisp
 (use-package jal
-  :load-path "/path/to/java-agent-loader"
+  :ensure t
   :custom
   (jal-auto-setup t)
   :config
   (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
-*** Using ~use-package~ with ~package-vc~ (Emacs 29+)
+*** Using package-vc-install (Emacs 29+)
 
-No clone needed: Emacs fetches the package directly from GitHub:
+Emacs 29 and later can install packages directly from Git repositories.
 
 #+begin_src elisp
 (use-package jal
+  :ensure t
   :vc (:url "https://github.com/saulotoledo/java-agent-loader" :rev :newest)
+  :custom
+  (jal-auto-setup t)
+  :config
+  (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
+#+end_src
+
+You can later update all VC-installed packages with:
+
+#+begin_src elisp
+(package-vc-update-all)
+#+end_src
+
+*** Using ~use-package~ with a local clone
+
+Clone the repository to a local directory and point ~use-package~ at it:
+
+#+begin_src elisp
+(use-package jal
+  :ensure t
+  :load-path "/path/to/java-agent-loader"
   :custom
   (jal-auto-setup t)
   :config
@@ -105,6 +144,7 @@ No clone needed: Emacs fetches the package directly from GitHub:
 #+begin_src elisp
 (straight-use-package
  '(jal :type git :host github :repo "saulotoledo/java-agent-loader"))
+(setq jal-auto-setup t)
 (jal-lsp-java-mode 1) ; or (jal-eglot-java-mode 1)
 #+end_src
 
