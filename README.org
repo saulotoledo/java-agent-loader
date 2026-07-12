@@ -25,6 +25,63 @@ instrumentation management and has absolutely no relation to AI assistants, LLM
 workflows, or autonomous software agents.
 #+end_quote
 
+** Quick Reference
+
+All JAL configuration variables:
+
+| Variable                | Type    | Default    | Description                                                   |
+|-------------------------+---------+------------+---------------------------------------------------------------|
+| ~jal-auto-setup~        | boolean | ~nil~      | Skip prompt; auto-detect agents on every startup              |
+| ~jal-known-agents~      | list    | (built-in) | Read-only. Known agents (Lombok, OpenTelemetry, JaCoCo)       |
+| ~jal-additional-agents~ | list    | ~nil~      | Use this to add agents or override ~jal-known-agents~ entries |
+
+#+begin_quote
+*NOTE*: Do *not* set ~jal-known-agents~ directly. It is the internal registry of
+pre-configured agents and is not designed for user customization. To add a new
+agent or override parameters of a known one, use ~jal-additional-agents~
+instead.
+#+end_quote
+
+Enable *exactly one* global integration mode (never both, never in a hook):
+
+| Mode                  | Requires package | Activate with             |
+|-----------------------+------------------+---------------------------|
+| ~jal-lsp-java-mode~   | =lsp-java=       | =(jal-lsp-java-mode 1)=   |
+| ~jal-eglot-java-mode~ | =eglot-java=     | =(jal-eglot-java-mode 1)= |
+
+#+begin_src elisp
+;; ✓ CORRECT: top-level :config block
+(use-package jal
+  :custom
+  (jal-auto-setup t)
+  :config
+  ;; Optional: override known agents or add new ones
+  (jal-additional-agents
+        '( ;; Override a known agent with custom parameters
+          ("org.jacoco.agent" :params "destfile=target/jacoco.exec")
+
+          ;; Add an agent not in the known list
+          ("my-custom-agent" :jar-path "/opt/agents/my-agent.jar")
+          ))
+  (jal-lsp-java-mode 1))
+
+;; ✗ WRONG: never add to a buffer-local hook
+(add-hook 'java-mode-hook (lambda () (jal-lsp-java-mode 1)))
+#+end_src
+
+#+begin_quote
+*Why the hook approach is wrong*: JAL needs to intercept the language server
+startup *before* it launches, so it can inject the agent arguments. This
+interception is set up once when the mode is enabled, and torn down when it is
+disabled. Adding the mode to ~java-mode-hook~ means it is enabled and disabled
+on every Java buffer visit and kill -- the interception may not be in place by
+the time the language server starts, or the configuration state may be reset
+between visits.
+
+Enable the mode exactly once at the top level to keep the interception stable
+for the lifetime of the Emacs session.
+#+end_quote
+
 ** How It Works
 
 - /Automatic Detection/: When you open a Java project, JAL scans your Maven
@@ -64,22 +121,24 @@ installed:
 - [[https://github.com/emacs-lsp/lsp-java][lsp-java]] - LSP client for Java using JDTLS
 - [[https://github.com/yveszoundi/eglot-java][eglot-java]] - eglot-java extension for Emacs
 
-Enable the matching integration mode once in your configuration:
-=jal-lsp-java-mode= for =lsp-java=, or =jal-eglot-java-mode= for =eglot-java=.
+*** Choose an Installation Method
 
-#+begin_quote
-*NOTE*: Both modes are *global* minor modes. Enable them once at the top level
-of your configuration (for example in a =use-package :config= block) with
-=(jal-lsp-java-mode 1)= or =(jal-eglot-java-mode 1)=. Do *not* add them to a
-buffer-local hook such as =java-mode-hook=. Use =-1= to disable.
-#+end_quote
+Pick *one* of the following methods. Do *not* mix keys from different methods
+(e.g., do not combine ~:vc~ with ~:load-path~).
 
-*** Installing via MELPA
+| Method               | Requirement        | Recommended when                    |
+|----------------------+--------------------+-------------------------------------|
+| MELPA                | MELPA in archives  | Most users (recommended)            |
+| ~package-vc-install~ | Emacs 29+          | Direct Git install, no MELPA needed |
+| Local clone          | Git clone on disk  | Development / unpublished changes   |
+| ~straight.el~        | straight.el set up | Lockfile-based reproducible configs |
+
+*** Via MELPA (recommended)
 
 This is the recommended method for installing this package.
 
-First, ensure you have the [[https://melpa.org/#/getting-started][MELPA repository]] configured in your Emacs.
-If you haven't already, add this to your init file:
+First, ensure you have the [[https://melpa.org/#/getting-started][MELPA repository]] configured in your Emacs. If you
+haven't already, add this to your init file:
 
 #+begin_src elisp
 (require 'package)
@@ -105,9 +164,12 @@ JAL must be enabled to work. Here is a configuration example using
   (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
-*** Using package-vc-install (Emacs 29+)
+*** Via package-vc-install (Emacs 29+)
 
-Emacs 29 and later can install packages directly from Git repositories.
+Emacs 29 and later can install packages directly from Git repositories. Uses the
+~:vc~ keyword.
+
+*Do not* combine ~:vc~ with ~:load-path~.
 
 #+begin_src elisp
 (use-package jal
@@ -125,9 +187,11 @@ You can later update all VC-installed packages with:
 (package-vc-update-all)
 #+end_src
 
-*** Using ~use-package~ with a local clone
+*** Via local clone
 
-Clone the repository to a local directory and point ~use-package~ at it:
+Clone the repository and point ~use-package~ at it via ~:load-path~.
+
+*Do not* combine ~:load-path~ with ~:vc~.
 
 #+begin_src elisp
 (use-package jal
@@ -139,7 +203,7 @@ Clone the repository to a local directory and point ~use-package~ at it:
   (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
-*** Using straight.el
+*** Via straight.el
 
 #+begin_src elisp
 (straight-use-package
@@ -181,21 +245,56 @@ JAL hooks into ~lsp-java~ and ~eglot-java~ once you enable ~jal-lsp-java-mode~
 or ~jal-eglot-java-mode~. These are global modes -- enable one once at the top
 level; no further setup is needed in the ~lsp-java~ or ~eglot-java~ blocks.
 
-*** Supported Properties for ~jal-additional-agents~
+*** ~jal-additional-agents~ Entry Format
 
-Each entry is either ~("ARTIFACT-ID")~ (use defaults) or ~("ARTIFACT-ID" :key
-value ...)~ (override properties).
+Each entry: ~("ARTIFACT-ID")~ to use defaults, or ~("ARTIFACT-ID" :key value ...)~ to override.
 
-- ~:params~ (String): Arguments appended after the ~=~ in
-  ~-javaagent:...=<params>~.
-- ~:jar-path~ (String): A format string or absolute path for the agent JAR.
-  - **Relative Pattern**: If it does *not* start with ~/~, it is treated as a
-    pattern relative to your local Maven/Gradle repository.
-    - ~%a~: artifactId
-    - ~%v~: version
-    - ~%g~: groupId
-  - **Absolute Path**: If it starts with ~/~, it is used as-is. Placeholders
-    (~%a~, ~%v~) are still expanded.
+| Property    | Type   | Description                                               |
+|-------------+--------+-----------------------------------------------------------|
+| ~:params~   | string | Arguments appended after ~=~ in ~-javaagent:...=<params>~ |
+| ~:jar-path~ | string | JAR location -- behavior depends on leading character     |
+
+~:jar-path~ resolution rules:
+
+| Value starts with | Treated as                                        | Placeholders available |
+|-------------------+---------------------------------------------------+------------------------|
+| ~/~ (slash)       | Absolute path, used as-is                         | ~%a~, ~%v~ expanded    |
+| anything else     | Pattern relative to Maven/Gradle local repository | ~%a~, ~%v~, ~%g~       |
+
+Placeholder reference:
+
+| Placeholder | Expands to |
+|-------------+------------|
+| ~%a~        | artifactId |
+| ~%v~        | version    |
+| ~%g~        | groupId    |
+
+**** Example
+
+The following example covers all entry forms in one block:
+
+#+begin_src elisp
+(setq jal-additional-agents
+  '(
+    ;; 1. Override a known agent's params only.
+    ;;    JAR path is still resolved automatically from the local Maven/Gradle cache.
+    ;;    Produces: -javaagent:/home/user/.m2/.../org.jacoco.agent-0.8.x-runtime.jar=destfile=build/jacoco.exec
+    ("org.jacoco.agent" :params "destfile=build/jacoco.exec")
+
+    ;; 2. Agent with an absolute JAR path.
+    ;;    %a expands to the artifactId; the path is used as-is (not looked up in the cache).
+    ;;    Produces: -javaagent:/opt/company-agents/my-profiler-1.0.jar=port=9999
+    ("my-profiler"
+     :jar-path "/opt/company-agents/%a-1.0.jar"
+     :params "port=9999")
+
+    ;; 3. Agent with a relative JAR pattern (no leading /), resolved inside the local repository.
+    ;;    %g → groupId, %a → artifactId, %v → version
+    ;;    Produces: -javaagent:/home/user/.m2/com/example/tracing-agent/2.3.1/tracing-agent-2.3.1.jar
+    ("tracing-agent"
+     :jar-path "%g/%a/%v/%a-%v.jar")
+    ))
+#+end_src
 
 ** Usage with lsp-java
 
