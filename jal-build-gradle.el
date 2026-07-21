@@ -80,7 +80,7 @@ or nil on failure."
     (if (not gradle-cmd)
       (funcall callback nil)
       (let* ((init-file (jal--gradle-write-init-script agents-list))
-              (cmd (format "%s --no-daemon -q -I %s 2>/dev/null" gradle-cmd init-file))
+              (cmd (format "%s --no-daemon -q -I %s 2>&1" gradle-cmd init-file))
               (output-buffer (generate-new-buffer " *jal-gradle-detection*")))
         (make-process
           :name "jal-gradle-detection"
@@ -98,15 +98,9 @@ or nil on failure."
                 (when (file-exists-p init-file)
                   (delete-file init-file))
                 (if (not (= 0 exit-code))
-                  (let* ((error-lines (seq-filter
-                                        (lambda (l)
-                                          (string-match-p "\\(^FAILURE\\|^> \\|^\\* What went wrong\\|^Error\\)" l))
-                                        (split-string output "\n" t)))
-                          (error-summary (if error-lines
-                                           (mapconcat #'identity error-lines "\n")
-                                           output)))
+                  (progn
                     (jal--debug-log "Gradle command failed (exit %d):\n%s"
-                      exit-code error-summary)
+                      exit-code output)
                     (warn "JAL Gradle Error: Command failed (exit %d). Check the buffer %s for details." exit-code jal--debug-buffer-name)
                     (jal-show-debug-log)
                     (funcall callback nil))
