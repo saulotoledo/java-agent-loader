@@ -1,3 +1,4 @@
+*.db
 *.elc
 *-autoloads.el
 *-pkg.el
