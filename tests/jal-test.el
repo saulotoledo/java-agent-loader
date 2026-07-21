@@ -352,6 +352,23 @@ Returns the first matching executable in the current PATH."
     (should (equal original-args eglot-java-eclipse-jdt-args))
     (advice-remove 'eglot-java--eclipse-jdt-contact #'jal--eglot-java-contact-advice)))
 
+(ert-deftest jal-test/eglot-reconnect-reloads-via-eglot ()
+  "`jal--eglot-reconnect' shuts down then interactively calls `eglot'."
+  (let ((calls '())
+         (jal--eglot-reload-buffer nil))
+    (unwind-protect
+      (progn
+        (fset 'eglot-current-server (lambda () 'server))
+        (fset 'eglot-shutdown (lambda (&rest _) (push 'shutdown calls)))
+        (fset 'eglot (lambda (&rest _) (interactive) (push 'eglot calls)))
+        (with-temp-buffer
+          ;; Run the deferred body directly (skip run-at-time in batch).
+          (jal--eglot-reconnect-in-buffer (current-buffer)))
+        (should (equal (nreverse calls) '(shutdown eglot))))
+      (fmakunbound 'eglot-current-server)
+      (fmakunbound 'eglot-shutdown)
+      (fmakunbound 'eglot))))
+
 ;; ---------------------------------------------------------------------------
 ;; jal-build-gradle helpers
 ;; ---------------------------------------------------------------------------
