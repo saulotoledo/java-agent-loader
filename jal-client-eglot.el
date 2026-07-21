@@ -31,12 +31,19 @@
 
 (defvar eglot-java-eclipse-jdt-args)
 
+(defvar jal--eglot-reload-buffer nil
+  "File-visiting buffer to relaunch eglot in after agent detection.
+Set when building JDTLS contact (before async connect), never a temp buffer.")
+
 (defun jal--eglot-java-contact-advice (orig-fn &rest args)
   "Around advice for `eglot-java--eclipse-jdt-contact' to inject JAL vmargs.
 Dynamically extends `eglot-java-eclipse-jdt-args' with the javaagent
 arguments for the current project, leaving the variable itself unchanged.
+Also records the current file buffer for later reload after agent detection.
 ORIG-FN is the original function being advised.
 &REST ARGS contains the arguments passed to the advised function."
+  (when (buffer-file-name)
+    (setq jal--eglot-reload-buffer (current-buffer)))
   (let ((eglot-java-eclipse-jdt-args
           (append eglot-java-eclipse-jdt-args (jal-get-vmargs-with-javaagents))))
     (apply orig-fn args)))
@@ -52,16 +59,33 @@ falling back to the first `java' on PATH."
     (executable-find "java")))
 
 (defun jal--eglot-reconnect ()
-  "Reconnect eglot if active."
-  (when (and (bound-and-true-p eglot-managed-mode)
-          (fboundp 'eglot-reconnect)
-          (fboundp 'eglot-current-server))
-    (let ((server (eglot-current-server)))
-      (when server
-        ;; Clear the session guard so the post-reconnect hook re-runs and picks
-        ;; up the freshly written cache instead of skipping silently.
-        (clrhash jal--configured-scopes)
-        (eglot-reconnect server)))))
+  "Relaunch eglot/JDTLS after agents are detected and cached.
+Defers the Eglot shutdown and re-initialization to
+`jal--eglot-reconnect-in-buffer` via a zero-second timer. This avoids
+re-entrancy and state corruption issues when triggered from an async
+process sentinel."
+  (let ((buf jal--eglot-reload-buffer))
+    (setq jal--eglot-reload-buffer nil)
+    (when (and buf
+            (buffer-live-p buf)
+            (fboundp 'eglot-shutdown)
+            (fboundp 'eglot-current-server)
+            (fboundp 'eglot))
+      ;; Leave the process sentinel before touching eglot.
+      (run-at-time 0 nil #'jal--eglot-reconnect-in-buffer buf))))
+
+(defun jal--eglot-reconnect-in-buffer (buf)
+  "Shut down and relaunch eglot in BUF with freshly resolved contact."
+  (when (buffer-live-p buf)
+    (with-current-buffer buf
+      ;; Clear the session guard so the post-reconnect hook re-runs and
+      ;; picks up the freshly written cache.
+      (clrhash jal--configured-scopes)
+      (let ((server (eglot-current-server)))
+        (when server
+          (ignore-errors
+            (eglot-shutdown server nil nil 'preserve-buffers))))
+      (call-interactively #'eglot))))
 
 (defvar jal--eglot-java-interface-warning-issued nil
   "Non-nil once JAL has already warned about a missing eglot-java interface.
@@ -84,9 +108,16 @@ Accepts the SERVER argument passed by the hook."
   (jal--eglot-java-check-interface))
 
 (defun jal--eglot-connect-hook-find-agents (_server)
-  "Hook wrapper: call `jal-find-and-configure-agents' from `eglot-connect-hook'.
-Accepts the SERVER argument passed by the hook."
-  (jal-find-and-configure-agents))
+  "Run agent configuration in `jal--eglot-reload-buffer'.
+Because `eglot-connect-hook' often executes inside a temporary buffer
+\(e.g., ` *temp*'), this wrapper switches to the recorded target buffer
+before calling `jal-find-and-configure-agents'. Accepts and ignores
+_SERVER."
+  (let ((buf jal--eglot-reload-buffer))
+    (if (and buf (buffer-live-p buf))
+      (with-current-buffer buf
+        (jal-find-and-configure-agents))
+      (jal-find-and-configure-agents))))
 
 ;;;###autoload
 (define-minor-mode jal-eglot-java-mode
