@@ -36,16 +36,20 @@ resolved artifact in the format:
                 "allprojects {
   afterEvaluate { proj ->
     def targets = [%s] as Set
-    def cfg = proj.configurations.findByName('runtimeClasspath') ?:
-              proj.configurations.findByName('compileClasspath')
-    if (cfg) {
-      try {
-        cfg.resolvedConfiguration.resolvedArtifacts
-          .findAll { targets.contains(it.name) }
-          .each { art ->
-            println \"JAL_ARTIFACT\\t${art.moduleVersion.id.group}\\t${art.name}\\t${art.moduleVersion.id.version}\\t${art.file.absolutePath}\"
-          }
-      } catch (Exception ignored) {}
+    def foundPaths = [] as Set
+    ['runtimeClasspath', 'compileClasspath', 'annotationProcessor', 'testCompileClasspath'].each { cfgName ->
+      def cfg = proj.configurations.findByName(cfgName)
+      if (cfg) {
+        try {
+          cfg.resolvedConfiguration.resolvedArtifacts
+            .findAll { targets.contains(it.name) }
+            .each { art ->
+              if (foundPaths.add(art.file.absolutePath)) {
+                println \"JAL_ARTIFACT\\t${art.moduleVersion.id.group}\\t${art.name}\\t${art.moduleVersion.id.version}\\t${art.file.absolutePath}\"
+              }
+            }
+        } catch (Exception ignored) {}
+      }
     }
   }
 }
