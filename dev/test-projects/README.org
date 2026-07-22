@@ -1,0 +1,54 @@
+* Example Projects
+
+Minimal bookstore apps for manually testing JAL agent detection with ~lsp-java~
+/ ~eglot-java~.
+
+Both projects declare the three agents in ~jal-known-agents~:
+
+| Agent                    | Role in this example                  |
+|--------------------------+---------------------------------------|
+| Lombok                   | ~@Value~ / ~@Builder~ on ~Book~       |
+| JaCoCo                   | coverage on ~CartTest~                |
+| OpenTelemetry Java Agent | runtime dependency for JAL resolution |
+
+** Maven
+
+*** Run tests
+
+Verify that the project builds and tests pass standalone:
+
+#+begin_src shell
+cd dev/test-projects/maven
+./mvnw test # Or "./mvnw.bat test" on Windows
+cd -        # Return to repo root
+#+end_src
+
+*** Start test environment
+
+Launch the development environment from the repo root directory (no Windows
+equivalent at the moment):
+
+#+begin_src shell
+./dev/env/start-dev-env.sh eglot dev/test-projects/maven
+#+end_src
+
+** Gradle
+
+*** Run tests
+
+Verify that the project builds and tests pass standalone:
+
+#+begin_src shell
+cd dev/test-projects/gradle
+./gradlew test # Or "./gradlew.bat test" on Windows
+cd -           # Return to repo root
+#+end_src
+
+*** Start test environment
+
+Launch the development environment from the repo root directory (no Windows
+equivalent at the moment):
+
+#+begin_src shell
+./dev/env/start-dev-env.sh lsp dev/test-projects/gradle
+#+end_src

@@ -427,12 +427,20 @@ Each agent entry inside the scope is: ~(ARTIFACT-ID PATH PARAMS VERSION)~
 
 ** Running Tests
 
+*** Automated Tests
+
 #+begin_src shell
 make test
 #+end_src
 
 This byte-compiles all ~.el~ files and runs the ERT test suite in a clean batch
 Emacs session.
+
+*** Manual Interactive Testing
+
+For manual testing of LSP/Eglot integration across Maven and Gradle, JAL
+includes isolated development environments and sample projects. See the [[file:dev/test-projects/README.org][Test
+Projects README]] for instructions on launching these sandboxes.
 
 ** Limitations
 

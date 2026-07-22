@@ -1,0 +1,63 @@
+plugins {
+  id 'java'
+  id 'jacoco'
+  id 'application'
+}
+
+group = 'com.example'
+version = '1.0-SNAPSHOT'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(17)
+  }
+}
+
+application {
+  mainClass = 'com.example.bookstore.BookstoreApp'
+}
+
+repositories {
+  mavenCentral()
+}
+
+ext {
+  lombokVersion = '1.18.46'
+  jacocoToolVersion = '0.8.13'
+  otelVersion = '2.15.0'
+}
+
+dependencies {
+  // Lombok: compile-time codegen; JDTLS needs -javaagent for IDE support
+  compileOnly "org.projectlombok:lombok:${lombokVersion}"
+  annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+  testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+  testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+  // OpenTelemetry Java Agent: auto-instrumentation at JVM launch
+  runtimeOnly "io.opentelemetry.javaagent:opentelemetry-javaagent:${otelVersion}"
+
+  // Explicit so JAL can resolve org.jacoco.agent from the classpath
+  runtimeOnly "org.jacoco:org.jacoco.agent:${jacocoToolVersion}:runtime"
+
+  testImplementation platform('org.junit:junit-bom:5.11.3')
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+  useJUnitPlatform()
+  finalizedBy tasks.named('jacocoTestReport')
+}
+
+jacoco {
+  toolVersion = jacocoToolVersion
+}
+
+tasks.named('jacocoTestReport') {
+  dependsOn tasks.named('test')
+  reports {
+    xml.required = true
+    html.required = true
+  }
+}
