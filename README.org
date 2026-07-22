@@ -25,6 +25,8 @@ instrumentation management and has absolutely no relation to AI assistants, LLM
 workflows, or autonomous software agents.
 #+end_quote
 
+[[./preview.gif]]
+
 ** Quick Reference
 
 All JAL configuration variables:
