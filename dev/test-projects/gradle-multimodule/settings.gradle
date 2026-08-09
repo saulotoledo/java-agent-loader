@@ -1,0 +1,10 @@
+rootProject.name = 'subscription-root'
+
+include ':commons'
+include ':manager'
+include ':server'
+
+// Subproject directories use the module names directly
+project(':commons').projectDir = file('subscription-commons')
+project(':manager').projectDir = file('subscription-manager')
+project(':server').projectDir  = file('subscription-server')

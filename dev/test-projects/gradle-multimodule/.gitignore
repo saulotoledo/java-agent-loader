@@ -1,0 +1,13 @@
+.gradle/
+bin/
+build/
+.jal-config.el
+.classpath
+.project
+.factorypath
+.settings/
+*.class
+jacoco.exec
+.idea/
+*.iml
+.vscode/

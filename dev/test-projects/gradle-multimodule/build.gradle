@@ -1,0 +1,22 @@
+subprojects {
+  apply plugin: 'java'
+
+  group = 'com.example'
+  version = '0.0.1'
+
+  java {
+    toolchain {
+      languageVersion = JavaLanguageVersion.of(17)
+    }
+  }
+
+  repositories {
+    mavenCentral()
+  }
+
+  ext {
+    lombokVersion = '1.18.46'
+    jacocoToolVersion = '0.8.13'
+    otelVersion = '2.15.0'
+  }
+}

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.example</groupId>
+    <artifactId>subscription-root</artifactId>
+    <version>0.0.1</version>
+  </parent>
+
+  <artifactId>subscription-manager</artifactId>
+  <name>subscription-manager</name>
+  <description>
+    Business-logic module. Depends on subscription-commons at a fixed
+    (non-SNAPSHOT) version. This is done to test a scenario where Maven
+    cannot resolve the sibling from ~/.m2 unless it was previously
+    installed, and there is no SNAPSHOT rebuild fallback.
+
+    Some agents are declared here so JAL must find it in this module's
+    classpath.
+  </description>
+
+  <dependencies>
+    <!--
+      Critical: non-SNAPSHOT sibling dependency.
+      Without a reactor lifecycle phase, Maven resolves this from ~/.m2 and
+      fails with "Could not resolve com.example:subscription-commons:0.0.1".
+    -->
+    <dependency>
+      <groupId>com.example</groupId>
+      <artifactId>subscription-commons</artifactId>
+    </dependency>
+
+    <!-- Agent under test: JAL must detect this even on a clean ~/.m2 -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- OpenTelemetry Java Agent -->
+    <dependency>
+      <groupId>io.opentelemetry.javaagent</groupId>
+      <artifactId>opentelemetry-javaagent</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- JaCoCo runtime agent -->
+    <dependency>
+      <groupId>org.jacoco</groupId>
+      <artifactId>org.jacoco.agent</artifactId>
+      <classifier>runtime</classifier>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

@@ -14,7 +14,7 @@
 ;; this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;; Author: Saulo Toledo <saulotoledo@gmail.com>
-;; Version: 2.0.0
+;; Version: 2.1.0-snapshot
 ;; Package-Requires: ((emacs "28.1"))
 ;; Keywords: java, languages, tools
 ;; URL: https://github.com/saulotoledo/java-agent-loader

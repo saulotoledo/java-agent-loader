@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.example</groupId>
+    <artifactId>subscription-root</artifactId>
+    <version>0.0.1</version>
+  </parent>
+
+  <artifactId>subscription-commons</artifactId>
+  <name>subscription-commons</name>
+  <description>
+    Shared utilities module. No internal sibling dependencies.
+    This is the leaf of the dependency graph -- it must compile first so
+    subscription-manager can resolve it via the reactor artifact map.
+  </description>
+
+  <dependencies>
+    <!-- No agents here: tests the case where an upstream module is clean -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>
