@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    Root reactor POM for the JAL multi-module regression test.
+
+    Purpose:
+    Test a scenario where "mvn -B dependency:list" (standalone goal) fails
+    because subscription-manager cannot resolve subscription-commons from the
+    local repository when it has not been installed there yet.
+
+    JAL prepends jal-maven-lifecycle-phase (default: "compile") so Maven
+    processes modules in reactor order first, populating the reactor artifact
+    map before dependency:list runs.
+
+    Module graph:
+      subscription-commons  (no internal deps)
+      subscription-manager  depends on com.example:subscription-commons:0.0.1
+      subscription-server   depends on com.example:subscription-manager:0.0.1
+
+    All versions are fixed (non-SNAPSHOT) to guarantee resolution failure on a
+    clean ~/.m2. SNAPSHOT versions would fall back to rebuilding locally.
+  -->
+
+  <groupId>com.example</groupId>
+  <artifactId>subscription-root</artifactId>
+  <version>0.0.1</version>
+  <packaging>pom</packaging>
+  <name>subscription-root</name>
+  <description>
+    Multi-module reactor for testing JAL agent detection in projects with
+    uninstalled sibling dependencies.
+  </description>
+
+  <modules>
+    <module>subscription-commons</module>
+    <module>subscription-manager</module>
+    <module>subscription-server</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>17</maven.compiler.release>
+    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
+    <jacoco.version>0.8.13</jacoco.version>
+    <lombok.version>1.18.46</lombok.version>
+    <otel.version>2.15.0</otel.version>
+    <junit.version>5.11.3</junit.version>
+  </properties>
+
+  <!-- Declare agent deps in dependencyManagement so child POMs pin versions -->
+  <dependencyManagement>
+    <dependencies>
+      <!-- Internal siblings -->
+      <dependency>
+        <groupId>com.example</groupId>
+        <artifactId>subscription-commons</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.example</groupId>
+        <artifactId>subscription-manager</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- Agents -->
+      <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>${lombok.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.opentelemetry.javaagent</groupId>
+        <artifactId>opentelemetry-javaagent</artifactId>
+        <version>${otel.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jacoco</groupId>
+        <artifactId>org.jacoco.agent</artifactId>
+        <version>${jacoco.version}</version>
+        <classifier>runtime</classifier>
+      </dependency>
+
+      <!-- Test -->
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>${junit.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+              </path>
+            </annotationProcessorPaths>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire-plugin.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>

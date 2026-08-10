@@ -116,7 +116,13 @@ or nil on failure."
           (let* ((repo-path (replace-regexp-in-string "\033\\[[0-9;]*m" "" (string-trim repo-path)))
                   ;; Build the dependency list command
                   (all-agent-ids (mapconcat #'identity agents-list ","))
-                  (mvn-list-cmd (format "mvn -B dependency:list -DincludeArtifactIds=%s 2>/dev/null"
+                  (phase-prefix (if (and
+                                      (boundp 'jal-maven-lifecycle-phase)
+                                      jal-maven-lifecycle-phase)
+                                  (concat jal-maven-lifecycle-phase " ")
+                                  ""))
+                  (mvn-list-cmd (format "mvn -B %sdependency:list -DincludeArtifactIds=%s 2>/dev/null"
+                                  phase-prefix
                                   all-agent-ids)))
             (jal--maven-run-command-async
               mvn-list-cmd

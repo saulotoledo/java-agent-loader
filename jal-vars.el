@@ -93,5 +93,28 @@ during setup so the core cache functions remain client-agnostic.
 When nil, `jal--current-java-key' falls back to resolving the first
 `java' found on PATH.")
 
+(defcustom jal-maven-lifecycle-phase "compile"
+  "Maven lifecycle phase prepended to `dependency:list' for agent detection.
+
+In a multi-module reactor, running `dependency:list' as a standalone Maven
+goal skips the reactor artifact map: each module tries to resolve its sibling
+dependencies from the local repository (~/.m2) and fails when they have not
+been installed there yet. Prepending a lifecycle phase (e.g. \\\"compile\\\")
+forces Maven to process all modules in dependency order first, populating the
+reactor map so siblings resolve from within the reactor rather than from the
+local repository.
+
+The default \\\"compile\\\" is the cheapest standard phase that achieves this.
+It does not install artifacts into ~/.m2, so it has no side-effects on the
+local repository.
+
+Set to nil to achieve faster detection with `dependency:list' invoked as a
+standalone goal. However, the detection will fail for any reactor whose sibling
+modules are not already installed in ~/.m2."
+  :type '(choice
+           (const  :tag "None (standalone goal -- may break multi-module reactors)" nil)
+           (string :tag "Phase (default: compile)"))
+  :group 'jal)
+
 (provide 'jal-vars)
 ;;; jal-vars.el ends here

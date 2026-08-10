@@ -1,0 +1,33 @@
+/*
+ * subscription-manager -- depends on :commons (sibling project substitution).
+ *
+ * Gradle resolves project(':commons') through its dependency substitution
+ * mechanism at configuration time, independent of whether commons artifacts
+ * exist in the local cache.
+ *
+ * Agents declared: Lombok, OpenTelemetry Java Agent, JaCoCo runtime.
+ */
+dependencies {
+  // Sibling: resolved via Gradle project substitution (no local cache needed)
+  implementation project(':commons')
+
+  // Lombok: compile-time codegen; JDTLS needs -javaagent for IDE support
+  compileOnly             "org.projectlombok:lombok:${lombokVersion}"
+  annotationProcessor     "org.projectlombok:lombok:${lombokVersion}"
+  testCompileOnly         "org.projectlombok:lombok:${lombokVersion}"
+  testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+  // OpenTelemetry Java Agent: auto-instrumentation at JVM launch
+  runtimeOnly "io.opentelemetry.javaagent:opentelemetry-javaagent:${otelVersion}"
+
+  // JaCoCo runtime agent
+  runtimeOnly "org.jacoco:org.jacoco.agent:${jacocoToolVersion}:runtime"
+
+  testImplementation platform('org.junit:junit-bom:5.11.3')
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+  testRuntimeOnly    'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+  useJUnitPlatform()
+}

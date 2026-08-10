@@ -31,11 +31,12 @@ workflows, or autonomous software agents.
 
 All JAL configuration variables:
 
-| Variable                | Type    | Default    | Description                                                   |
-|-------------------------+---------+------------+---------------------------------------------------------------|
-| ~jal-auto-setup~        | boolean | ~nil~      | Skip prompt; auto-detect agents on every startup              |
-| ~jal-known-agents~      | list    | (built-in) | Read-only. Known agents (Lombok, OpenTelemetry, JaCoCo)       |
-| ~jal-additional-agents~ | list    | ~nil~      | Use this to add agents or override ~jal-known-agents~ entries |
+| Variable                    | Type    | Default     | Description                                                                                                    |
+|-----------------------------+---------+-------------+----------------------------------------------------------------------------------------------------------------|
+| ~jal-auto-setup~            | boolean | ~nil~       | Skip prompt; auto-detect agents on every startup                                                               |
+| ~jal-known-agents~          | list    | (built-in)  | Read-only. Known agents (Lombok, OpenTelemetry, JaCoCo)                                                        |
+| ~jal-additional-agents~     | list    | ~nil~       | Use this to add agents or override ~jal-known-agents~ entries                                                  |
+| ~jal-maven-lifecycle-phase~ | string  | ~"compile"~ | Maven phase prepended to ~dependency:list~. ~nil~ skips compilation (faster, but may fail on unbuilt projects) |
 
 #+begin_quote
 *NOTE*: Do *not* set ~jal-known-agents~ directly. It is the internal registry of
@@ -351,8 +352,16 @@ that dynamically extends ~eglot-java-eclipse-jdt-args~ with the resolved
    java agents for this project?"* (Only prompts when inside a Maven or Gradle
    project.) Set ~jal-auto-setup~ to ~t~ to skip this prompt and always run
    detection automatically.
-3. On confirmation, JAL runs ~mvn dependency:list~ or a Gradle init script to
-   resolve the agent JAR paths and versions.
+3. On confirmation, JAL runs ~mvn <phase> dependency:list~ (Maven) or a Gradle
+   init script to resolve the agent JAR paths and versions.
+   - *IMPORTANT (Maven only)*: The Maven command prepends
+     ~jal-maven-lifecycle-phase~ (default: ~"compile"~) so that multi-module
+     reactors build their modules in dependency order first. This populates
+     Maven's reactor artifact map, allowing sibling modules to resolve without
+     being installed in ~$HOME/.m2~. **If you do not want JAL to trigger project
+     compilation, set ~jal-maven-lifecycle-phase~ to ~nil~** for faster
+     detection, at the cost of detection failures on multi-module reactors with
+     uninstalled siblings or unbuilt projects.
 4. Results are written to ~.jal-config.el~ in the project root and reused on
    future startups.
 

@@ -1,9 +1,10 @@
 * Example Projects
+Minimal apps for manually testing JAL agent detection with ~lsp-java~ /
+~eglot-java~.
 
-Minimal bookstore apps for manually testing JAL agent detection with ~lsp-java~
-/ ~eglot-java~.
-
-Both projects declare the three agents in ~jal-known-agents~:
+** Single-module projects (~maven/~, ~gradle/~)
+Minimal single-module bookstore apps. Both declare the three agents in
+~jal-known-agents~:
 
 | Agent                    | Role in this example                  |
 |--------------------------+---------------------------------------|
@@ -11,20 +12,15 @@ Both projects declare the three agents in ~jal-known-agents~:
 | JaCoCo                   | coverage on ~CartTest~                |
 | OpenTelemetry Java Agent | runtime dependency for JAL resolution |
 
-** Maven
-
-*** Run tests
-
-Verify that the project builds and tests pass standalone:
-
+*** Maven
+**** Run tests
 #+begin_src shell
 cd dev/test-projects/maven
 ./mvnw test # Or "./mvnw.bat test" on Windows
 cd -        # Return to repo root
 #+end_src
 
-*** Start test environment
-
+**** Start test environment
 Launch the development environment from the repo root directory (no Windows
 equivalent at the moment):
 
@@ -32,23 +28,85 @@ equivalent at the moment):
 ./dev/env/start-dev-env.sh eglot dev/test-projects/maven
 #+end_src
 
-** Gradle
-
-*** Run tests
-
-Verify that the project builds and tests pass standalone:
-
+*** Gradle
+**** Run tests
 #+begin_src shell
 cd dev/test-projects/gradle
 ./gradlew test # Or "./gradlew.bat test" on Windows
 cd -           # Return to repo root
 #+end_src
 
-*** Start test environment
-
+**** Start test environment
 Launch the development environment from the repo root directory (no Windows
 equivalent at the moment):
 
 #+begin_src shell
 ./dev/env/start-dev-env.sh lsp dev/test-projects/gradle
+#+end_src
+
+** Multi-module projects (~maven-multimodule/~, ~gradle-multimodule/~)
+Minimal multi-module examples for manually testing JAL agent detection.
+
+Module graph:
+
+#+begin_example
+subscription-commons   (leaf - no internal deps)
+subscription-manager   -> subscription-commons   [+ Lombok, OTel, JaCoCo]
+subscription-server    -> subscription-manager   [+ Lombok, OTel, JaCoCo]
+#+end_example
+
+*** Maven multi-module (~maven-multimodule/~)
+Standalone Maven goals (e.g., ~dependency:list~) fail on uncompiled multi-module
+projects when sibling submodules are absent from ~$HOME/.m2/repository~.
+Prepending the compile lifecycle phase forces Maven to build the in-memory
+reactor artifact map, enabling sibling dependency resolution and
+agent/annotation processor detection without requiring a prior local repository
+install.
+
+**** Reproduce dependency resolution failure
+#+begin_src shell
+# Clear local repository cache for sibling submodules
+rm -rf ~/.m2/repository/com/example
+
+cd dev/test-projects/maven-multimodule
+
+# Fails: Standalone goal lacks the reactor map needed to resolve uncompiled siblings
+mvn -B dependency:list -DincludeArtifactIds=lombok
+# -> BUILD FAILURE: Could not resolve com.example:subscription-commons:0.0.1
+#+end_src
+
+**** Verify fix with lifecycle execution
+#+begin_src shell
+# Succeeds: 'compile' populates the reactor artifact map before goal execution
+mvn -B compile dependency:list -DincludeArtifactIds=lombok
+# -> BUILD SUCCESS; lombok listed for subscription-manager and subscription-server
+#+end_src
+
+**** Run tests
+#+begin_src shell
+cd dev/test-projects/maven-multimodule
+mvn -B test
+cd -
+#+end_src
+
+**** Start test environment
+#+begin_src shell
+./dev/env/start-dev-env.sh eglot dev/test-projects/maven-multimodule
+#+end_src
+
+*** Gradle multi-project (~gradle-multimodule/~)
+Gradle resolves ~project(':subproject')~ through its own dependency substitution
+mechanism at configuration time, so the existing JAL Gradle should work without
+any changes.
+
+**** Run tests
+#+begin_src shell
+cd dev/test-projects/gradle-multimodule
+./gradlew test
+cd -
+#+end_src
+
+**** Start test environment
+#+begin_src shell
+./dev/env/start-dev-env.sh lsp dev/test-projects/gradle-multimodule
 #+end_src

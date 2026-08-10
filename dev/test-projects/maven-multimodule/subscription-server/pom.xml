@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.example</groupId>
+    <artifactId>subscription-root</artifactId>
+    <version>0.0.1</version>
+  </parent>
+
+  <artifactId>subscription-server</artifactId>
+  <name>subscription-server</name>
+  <description>
+    Entry-point module. Depends on subscription-manager (which in turn depends
+    on subscription-commons) -- a second-level transitive sibling chain.
+
+    Agents are also declared here to verify that JAL detects them across all
+    modules, not just the first resolvable one.
+  </description>
+
+  <dependencies>
+    <!-- Second-level sibling: subscription-server -> manager -> commons -->
+    <dependency>
+      <groupId>com.example</groupId>
+      <artifactId>subscription-manager</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.opentelemetry.javaagent</groupId>
+      <artifactId>opentelemetry-javaagent</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jacoco</groupId>
+      <artifactId>org.jacoco.agent</artifactId>
+      <classifier>runtime</classifier>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

@@ -1,0 +1,28 @@
+/*
+ * subscription-server -- depends on :manager (two-level transitive sibling chain).
+ *
+ * Exercises server -> manager -> commons through Gradle project substitution.
+ * Agents also declared here to verify JAL detects them across all subprojects,
+ * not just the first resolvable one.
+ */
+dependencies {
+  // Two-level sibling chain: server -> manager -> commons
+  implementation project(':manager')
+
+  compileOnly             "org.projectlombok:lombok:${lombokVersion}"
+  annotationProcessor     "org.projectlombok:lombok:${lombokVersion}"
+  testCompileOnly         "org.projectlombok:lombok:${lombokVersion}"
+  testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+  runtimeOnly "io.opentelemetry.javaagent:opentelemetry-javaagent:${otelVersion}"
+
+  runtimeOnly "org.jacoco:org.jacoco.agent:${jacocoToolVersion}:runtime"
+
+  testImplementation platform('org.junit:junit-bom:5.11.3')
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+  testRuntimeOnly    'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+  useJUnitPlatform()
+}
