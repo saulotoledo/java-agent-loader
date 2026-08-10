@@ -173,7 +173,7 @@
   (jal-lsp-java-mode -1)
   (should-not (advice-member-p #'jal--lsp-java-ls-command-advice 'lsp-java--ls-command))
   (should-not (memq #'jal--lsp-java-check-interface lsp-after-initialize-hook))
-  (should-not (memq #'jal-find-and-configure-agents lsp-after-initialize-hook))
+  (should-not (memq #'jal--lsp-after-initialize-find-agents lsp-after-initialize-hook))
   (should-not (memq #'jal--lsp-java-restart jal-agents-detected-hook)))
 
 (ert-deftest jal-test/lsp-mode-toggle-is-idempotent ()
@@ -182,6 +182,7 @@
   (jal-lsp-java-mode 1)
   (should jal-lsp-java-mode)
   (should (= 1 (cl-count #'jal--lsp-java-check-interface lsp-after-initialize-hook)))
+  (should (= 1 (cl-count #'jal--lsp-after-initialize-find-agents lsp-after-initialize-hook)))
   (jal-lsp-java-mode -1)
   (should-not jal-lsp-java-mode)
   (should-not (advice-member-p #'jal--lsp-java-ls-command-advice 'lsp-java--ls-command)))
@@ -244,6 +245,108 @@
     (lsp-java--ls-command)
     (should (equal original-vmargs lsp-java-vmargs))
     (advice-remove 'lsp-java--ls-command #'jal--lsp-java-ls-command-advice)))
+
+(ert-deftest jal-test/lsp-after-initialize-defers-find-agents ()
+  "`jal--lsp-after-initialize-find-agents' schedules via `jal--defer-in-buffer'."
+  (let ((deferred-fn nil)
+         (deferred-args nil))
+    (cl-letf (((symbol-function 'jal--defer-in-buffer)
+                (lambda (_buf _dir fn &rest args)
+                  (setq deferred-fn fn)
+                  (setq deferred-args args))))
+      (with-temp-buffer
+        (jal--lsp-after-initialize-find-agents)
+        (should (eq deferred-fn #'jal-find-and-configure-agents))
+        (should (null deferred-args))))))
+
+(ert-deftest jal-test/lsp-restart-is-deferred ()
+  "`jal--lsp-java-restart' schedules `jal--lsp-java-restart-now' via `jal--defer'.
+Workspaces are captured at schedule time so the timer need not run in a
+Java buffer (`lsp-workspaces' is buffer-local)."
+  (let ((deferred-fn nil)
+         (deferred-args nil))
+    (cl-letf (((symbol-function 'jal--lsp-java-workspaces) (lambda () '(ws)))
+               ((symbol-function 'jal--defer)
+                 (lambda (fn &rest args)
+                   (setq deferred-fn fn)
+                   (setq deferred-args args))))
+      (jal--lsp-java-restart)
+      (should (eq deferred-fn #'jal--lsp-java-restart-now))
+      (should (equal deferred-args '((ws)))))))
+
+(ert-deftest jal-test/lsp-restart-now-without-lsp-mode-in-buffer ()
+  "`jal--lsp-java-restart-now' restarts captured workspaces off a non-lsp buffer."
+  (let ((restarted nil)
+         (jal--configured-scopes (make-hash-table :test 'equal)))
+    (puthash "scope" t jal--configured-scopes)
+    (cl-letf (((symbol-function 'lsp-workspaces) (lambda () nil))
+               ((symbol-function 'lsp-workspace-restart)
+                 (lambda (_ws) (setq restarted t))))
+      (with-temp-buffer
+        (should-not (bound-and-true-p lsp-mode))
+        ;; Pass workspaces explicitly (as the deferred call does).
+        (jal--lsp-java-restart-now '(ws))
+        (should restarted)
+        (should (= 0 (hash-table-count jal--configured-scopes)))))))
+
+(ert-deftest jal-test/lsp-restart-falls-back-to-session-workspaces ()
+  "`jal--lsp-java-workspaces' uses session workspaces when buffer has none."
+  (cl-letf (((symbol-function 'lsp-workspaces) (lambda () nil))
+             ((symbol-function 'lsp-session) (lambda () 'session))
+             ((symbol-function 'lsp--session-workspaces)
+               (lambda (session)
+                 (should (eq session 'session))
+                 '(session-ws))))
+    (should (equal '(session-ws) (jal--lsp-java-workspaces)))))
+
+(ert-deftest jal-test/detect-finalize-is-deferred ()
+  "Detection completion schedules finalize via `jal--defer-in-buffer'."
+  (let ((deferred-fn nil)
+         (deferred-args nil)
+         (jal--detection-in-progress nil)
+         (jal-agents-config '(("lombok" :params "")))
+         (results '(("lombok" "/tmp/lombok.jar" "1.18.30"))))
+    (cl-letf (((symbol-function 'jal--defer-in-buffer)
+                (lambda (_buf _dir fn &rest args)
+                  (setq deferred-fn fn)
+                  (setq deferred-args args)))
+               ((symbol-function 'jal--detect-agents-core-async)
+                 (lambda (_ids callback)
+                   (funcall callback results))))
+      (jal-detect-java-agents)
+      (should (eq deferred-fn #'jal--finalize-detected-agents))
+      (should (equal deferred-args (list results)))
+      ;; Lock held until deferred finalize runs.
+      (should jal--detection-in-progress))))
+
+(ert-deftest jal-test/finalize-detected-agents-clears-lock ()
+  "`jal--finalize-detected-agents' clears the in-progress lock."
+  (let ((jal--detection-in-progress t)
+         (jal-agents-config '(("lombok" :params "")))
+         (cached nil)
+         (hook-ran nil))
+    (cl-letf (((symbol-function 'jal--cache-agent-config)
+                (lambda (&rest args) (setq cached args)))
+               ((symbol-function 'run-hooks)
+                 (lambda (_hook) (setq hook-ran t))))
+      (jal--finalize-detected-agents
+        '(("lombok" "/tmp/lombok.jar" "1.18.30")))
+      (should-not jal--detection-in-progress)
+      (should cached)
+      (should hook-ran))))
+
+(ert-deftest jal-test/call-in-buffer-uses-directory-when-buffer-dead ()
+  "`jal--call-in-buffer' still applies DIRECTORY if BUFFER is dead."
+  (let* ((dir (make-temp-file "jal-dir" t))
+          (seen nil))
+    (unwind-protect
+      (progn
+        (jal--call-in-buffer nil dir
+          (lambda ()
+            (setq seen default-directory)))
+        (should (equal (file-name-as-directory seen)
+                  (file-name-as-directory dir))))
+      (delete-directory dir t))))
 
 ;; ---------------------------------------------------------------------------
 ;; jal-client-eglot advice installation
@@ -368,6 +471,19 @@ Returns the first matching executable in the current PATH."
       (fmakunbound 'eglot-current-server)
       (fmakunbound 'eglot-shutdown)
       (fmakunbound 'eglot))))
+
+(ert-deftest jal-test/eglot-connect-hook-defers-find-agents ()
+  "`jal--eglot-connect-hook-find-agents' schedules via `jal--defer'."
+  (let ((deferred-fn nil)
+         (deferred-args nil)
+         (jal--eglot-reload-buffer 'fake-buf))
+    (cl-letf (((symbol-function 'jal--defer)
+                (lambda (fn &rest args)
+                  (setq deferred-fn fn)
+                  (setq deferred-args args))))
+      (jal--eglot-connect-hook-find-agents nil)
+      (should (eq deferred-fn #'jal--eglot-find-agents-in-buffer))
+      (should (equal deferred-args '(fake-buf))))))
 
 ;; ---------------------------------------------------------------------------
 ;; jal-build-gradle helpers

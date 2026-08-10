@@ -50,17 +50,33 @@ ORIG-FN is the original function being advised.
   (let ((lsp-java-vmargs (append lsp-java-vmargs (jal-get-vmargs-with-javaagents))))
     (apply orig-fn args)))
 
+(defun jal--lsp-java-workspaces ()
+  "Return lsp workspaces to restart after agent detection.
+Prefers buffer-local `lsp-workspaces'; falls back to the session list so a
+deferred timer that no longer runs in a Java buffer still finds servers."
+  (or (and (fboundp 'lsp-workspaces) (lsp-workspaces))
+    (and (fboundp 'lsp-session)
+      (fboundp 'lsp--session-workspaces)
+      (lsp--session-workspaces (lsp-session)))))
+
 (defun jal--lsp-java-restart ()
-  "Restart lsp-java workspace if active."
-  (when (and
-          (bound-and-true-p lsp-mode)
-          (fboundp 'lsp-workspace-restart)
-          (fboundp 'lsp-workspaces))
-    ;; Clear the session guard so the post-restart hook re-runs and picks up
-    ;; the freshly written cache instead of skipping silently.
-    (clrhash jal--configured-scopes)
-    (dolist (workspace (lsp-workspaces))
-      (lsp-workspace-restart workspace))))
+  "Restart lsp-java workspace if active.
+Captures workspaces now (while still in the Java buffer from finalize),
+then defers the restart so it does not nest inside `run-hooks'."
+  (jal--defer #'jal--lsp-java-restart-now (jal--lsp-java-workspaces)))
+
+(defun jal--lsp-java-restart-now (&optional workspaces)
+  "Restart WORKSPACES and clear the session scope guard.
+WORKSPACES should be captured before deferral; if nil, re-query via
+`jal--lsp-java-workspaces'."
+  (when (fboundp 'lsp-workspace-restart)
+    (let ((workspaces (or workspaces (jal--lsp-java-workspaces))))
+      (when workspaces
+        ;; Clear the session guard so the post-restart hook re-runs and picks up
+        ;; the freshly written cache instead of skipping silently.
+        (clrhash jal--configured-scopes)
+        (dolist (workspace workspaces)
+          (lsp-workspace-restart workspace))))))
 
 (defvar jal--lsp-java-interface-warning-issued nil
   "Non-nil once JAL has already warned about a missing lsp-java interface.
@@ -76,6 +92,13 @@ Warns at most once per Emacs session to avoid repeat messages on restarts."
             jal--lsp-java-interface-warning-issued)
     (setq jal--lsp-java-interface-warning-issued t)
     (jal--warn-interface-changed "lsp-java--ls-command" "lsp-java")))
+
+(defun jal--lsp-after-initialize-find-agents ()
+  "Defer `jal-find-and-configure-agents' off `lsp-after-initialize-hook'.
+Preserves the initialize buffer so project detection and prompts still
+see the Java file's `default-directory'."
+  (jal--defer-in-buffer (current-buffer) default-directory
+    #'jal-find-and-configure-agents))
 
 ;;;###autoload
 (define-minor-mode jal-lsp-java-mode
@@ -95,11 +118,11 @@ disabled, the advice and hooks are removed."
       (setq jal-current-java-key-function #'jal--lsp-java-current-java-key)
       (advice-add 'lsp-java--ls-command :around #'jal--lsp-java-ls-command-advice)
       (add-hook 'lsp-after-initialize-hook #'jal--lsp-java-check-interface)
-      (add-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents)
+      (add-hook 'lsp-after-initialize-hook #'jal--lsp-after-initialize-find-agents)
       (add-hook 'jal-agents-detected-hook #'jal--lsp-java-restart))
     (advice-remove 'lsp-java--ls-command #'jal--lsp-java-ls-command-advice)
     (remove-hook 'lsp-after-initialize-hook #'jal--lsp-java-check-interface)
-    (remove-hook 'lsp-after-initialize-hook #'jal-find-and-configure-agents)
+    (remove-hook 'lsp-after-initialize-hook #'jal--lsp-after-initialize-find-agents)
     (remove-hook 'jal-agents-detected-hook #'jal--lsp-java-restart)))
 
 (provide 'jal-client-lsp)

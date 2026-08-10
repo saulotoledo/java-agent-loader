@@ -51,6 +51,14 @@ if [[ ! -d "$PROJECT_DIR" ]]; then
   exit 1
 fi
 
+# Force hash-table deserialization for lsp-mode. A parent shell may export
+# LSP_USE_PLISTS=1; MELPA packages in .pkg-lsp are normally compiled without
+# it, and a compile/runtime mismatch yields hash-table-p errors on every
+# JSON-RPC message. If .pkg-lsp was ever installed with LSP_USE_PLISTS set,
+# delete that directory once so packages recompile in hash-table mode:
+#   rm -rf "$SCRIPT_DIR/.pkg-lsp"
+unset LSP_USE_PLISTS
+
 # -- Create /tmp sandbox -------------------------------------------------------
 # The init file also cleans up via kill-emacs-hook; this trap handles crashes
 # or SIGINT/SIGTERM from outside Emacs.
@@ -70,8 +78,8 @@ echo " JAL dev environment : $LABEL"
 echo " Init file           : $INIT_FILE"
 echo " /tmp sandbox        : $TMP_DIR  (deleted on exit)"
 echo " Packages (persist)  : $SCRIPT_DIR/.pkg-${CLIENT}"
-[[ "$CLIENT" == "eglot" ]] && \
-echo " JDTLS   (persist)   : $SCRIPT_DIR/.jdtls-eglot"
+echo " LSP_USE_PLISTS      : unset (hash-table mode)"
+[[ "$CLIENT" == "eglot" ]] && echo " JDTLS   (persist)   : $SCRIPT_DIR/.jdtls-eglot"
 echo " Project             : $PROJECT_DIR"
 echo "----------------------------------------------"
 

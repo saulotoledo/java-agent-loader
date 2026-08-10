@@ -112,6 +112,28 @@ that JAL itself triggers after first-time detection.")
   (setq global-mode-string (delq 'jal--mode-line-spinner global-mode-string))
   (force-mode-line-update t))
 
+(defun jal--defer (fn &rest args)
+  "Run FN with ARGS on the next timer tick.
+Leaves process sentinels and LSP/eglot hooks before minibuffer I/O or
+workspace restarts, avoiding re-entrant JSON-RPC handling."
+  (apply #'run-at-time 0 nil fn args))
+
+(defun jal--call-in-buffer (buffer directory fn &rest args)
+  "Apply FN to ARGS with BUFFER current and `default-directory' = DIRECTORY.
+If BUFFER is dead, still bind DIRECTORY so `project-current' keeps working."
+  (let ((default-directory (or directory default-directory)))
+    (if (and buffer (buffer-live-p buffer))
+      (with-current-buffer buffer
+        (let ((default-directory (or directory default-directory)))
+          (apply fn args)))
+      (apply fn args))))
+
+(defun jal--defer-in-buffer (buffer directory fn &rest args)
+  "Like `jal--defer', restoring BUFFER and DIRECTORY before calling FN with ARGS."
+  (jal--defer
+    (lambda ()
+      (apply #'jal--call-in-buffer buffer directory fn args))))
+
 ;; ====================================================================
 ;; Core Hook Function (Functional Injector)
 ;; ====================================================================
@@ -196,29 +218,42 @@ and `jal-agents-detected-hook' is run once detection completes."
     (if jal--detection-in-progress
       (message "JAL: Detection already in progress.")
       (setq jal--detection-in-progress t)
-      (let ((agents-to-check (mapcar #'car jal-agents-config)))
+      (let ((agents-to-check (mapcar #'car jal-agents-config))
+             ;; Capture before async: the Maven/Gradle process buffer is
+             ;; killed before the sentinel callback runs.
+             (origin-buffer (current-buffer))
+             (origin-directory default-directory))
         (jal--detect-agents-core-async
           agents-to-check
           (lambda (detection-results)
-            (setq jal--detection-in-progress nil)
-            (if (null detection-results)
-              (message "JAL: No agents found in project dependencies.")
-              (message "JAL: Detected agents: %S" (mapcar #'car detection-results))
-              (dolist (agent-entry detection-results)
-                (let* ((agent-id (car agent-entry))
-                        (detected-path (cadr agent-entry))
-                        (detected-version (caddr agent-entry))
-                        (config (cdr (assoc agent-id jal-agents-config)))
-                        (config-params (plist-get config :params))
-                        (agent-params (cond
-                                        ;; If params explicitly set (even if empty), use them
-                                        ((plist-member config :params) config-params)
-                                        ;; Otherwise, ask user
-                                        (t (read-string
-                                             (format "Params for %s (optional): " agent-id)
-                                             "" nil nil)))))
-                  (jal--cache-agent-config agent-id detected-path detected-version agent-params)))
-              (run-hooks 'jal-agents-detected-hook))))))))
+            ;; Leave the build-tool process sentinel before minibuffer I/O
+            ;; or jal-agents-detected-hook (LSP/eglot restart).
+            (jal--defer-in-buffer origin-buffer origin-directory
+              #'jal--finalize-detected-agents detection-results)))))))
+
+(defun jal--finalize-detected-agents (detection-results)
+  "Prompt, cache, and run hooks for DETECTION-RESULTS.
+Called via `jal--defer-in-buffer' so it does not run inside a process
+sentinel and still sees the originating project buffer/directory."
+  (setq jal--detection-in-progress nil)
+  (if (null detection-results)
+    (message "JAL: No agents found in project dependencies.")
+    (message "JAL: Detected agents: %S" (mapcar #'car detection-results))
+    (dolist (agent-entry detection-results)
+      (let* ((agent-id (car agent-entry))
+              (detected-path (cadr agent-entry))
+              (detected-version (caddr agent-entry))
+              (config (cdr (assoc agent-id jal-agents-config)))
+              (config-params (plist-get config :params))
+              (agent-params (cond
+                              ;; If params explicitly set (even if empty), use them
+                              ((plist-member config :params) config-params)
+                              ;; Otherwise, ask user
+                              (t (read-string
+                                   (format "Params for %s (optional): " agent-id)
+                                   "" nil nil)))))
+        (jal--cache-agent-config agent-id detected-path detected-version agent-params)))
+    (run-hooks 'jal-agents-detected-hook)))
 
 ;;;###autoload
 (defun jal-detect-agent-interactively (agent-id)
@@ -233,21 +268,30 @@ caching the result. Used for single, non-batch detection."
   (if jal--detection-in-progress
     (message "JAL: Detection already in progress.")
     (setq jal--detection-in-progress t)
-    (jal--detect-agents-core-async
-      (list agent-id)
-      (lambda (detection-results)
-        (setq jal--detection-in-progress nil)
-        (if (null detection-results)
-          (message "JAL: Agent '%s' not found in project dependencies." agent-id)
-          (let* ((agent-entry (car detection-results))
-                  (detected-path (cadr agent-entry))
-                  (detected-version (caddr agent-entry))
-                  (agent-params (read-string
-                                  (format "Inform any parameters required by agent %s (optional, e.g., destfile=target/jacoco.exec): "
-                                    agent-id)
-                                  "" nil nil)))
-            (message "JAL: Detected agent '%s' v%s. Caching setup." agent-id detected-version)
-            (jal--cache-agent-config agent-id detected-path detected-version agent-params)))))))
+    (let ((origin-buffer (current-buffer))
+           (origin-directory default-directory))
+      (jal--detect-agents-core-async
+        (list agent-id)
+        (lambda (detection-results)
+          (jal--defer-in-buffer origin-buffer origin-directory
+            #'jal--finalize-detected-agent agent-id detection-results))))))
+
+(defun jal--finalize-detected-agent (agent-id detection-results)
+  "Prompt and cache a single AGENT-ID from DETECTION-RESULTS.
+Called via `jal--defer-in-buffer' so it does not run inside a process
+sentinel and still sees the originating project buffer/directory."
+  (setq jal--detection-in-progress nil)
+  (if (null detection-results)
+    (message "JAL: Agent '%s' not found in project dependencies." agent-id)
+    (let* ((agent-entry (car detection-results))
+            (detected-path (cadr agent-entry))
+            (detected-version (caddr agent-entry))
+            (agent-params (read-string
+                            (format "Inform any parameters required by agent %s (optional, e.g., destfile=target/jacoco.exec): "
+                              agent-id)
+                            "" nil nil)))
+      (message "JAL: Detected agent '%s' v%s. Caching setup." agent-id detected-version)
+      (jal--cache-agent-config agent-id detected-path detected-version agent-params))))
 
 
 ;; ====================================================================
