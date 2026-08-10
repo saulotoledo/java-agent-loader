@@ -21,5 +21,6 @@ clean-elc:
 
 clean: clean-elc
 	rm -rf .cask
+	rm dev/test-projects/*/.jal-config.el 2>/dev/null || true
 
 .PHONY: all compile test ert clean-elc clean

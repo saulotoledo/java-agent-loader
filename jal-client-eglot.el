@@ -107,17 +107,24 @@ Warns at most once per Emacs session to avoid repeat messages on reconnects."
 Accepts the SERVER argument passed by the hook."
   (jal--eglot-java-check-interface))
 
+(defun jal--eglot-find-agents-in-buffer (&optional buffer)
+  "Run `jal-find-and-configure-agents' in BUFFER when it is live.
+If BUFFER is nil or dead, run in the current buffer instead."
+  (if (and buffer (buffer-live-p buffer))
+    (with-current-buffer buffer
+      (jal-find-and-configure-agents))
+    (jal-find-and-configure-agents)))
+
 (defun jal--eglot-connect-hook-find-agents (_server)
-  "Run agent configuration in `jal--eglot-reload-buffer'.
-Because `eglot-connect-hook' often executes inside a temporary buffer
-\(e.g., ` *temp*'), this wrapper switches to the recorded target buffer
-before calling `jal-find-and-configure-agents'. Accepts and ignores
-_SERVER."
-  (let ((buf jal--eglot-reload-buffer))
-    (if (and buf (buffer-live-p buf))
-      (with-current-buffer buf
-        (jal-find-and-configure-agents))
-      (jal-find-and-configure-agents))))
+  "Schedule agent setup after `eglot-connect-hook' returns.
+
+`eglot-connect-hook' often runs in a temporary buffer, so capture
+`jal--eglot-reload-buffer' first and switch to it when the deferred
+work runs. Deferral via `jal--defer' also keeps setup prompts
+\(`y-or-n-p' / `read-string') out of the connect-hook call stack.
+
+_SERVER is required by the hook and ignored."
+  (jal--defer #'jal--eglot-find-agents-in-buffer jal--eglot-reload-buffer))
 
 ;;;###autoload
 (define-minor-mode jal-eglot-java-mode
