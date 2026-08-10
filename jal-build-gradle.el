@@ -27,28 +27,47 @@
   "Write a Gradle init script that lists resolved jars for AGENTS-LIST.
 Returns the path to the created temp file. The script emits one line per
 resolved artifact in the format:
-  JAL_ARTIFACT\\tGROUP\\tARTIFACT\\tVERSION\\tFILE_PATH"
+  JAL_ARTIFACT\\tGROUP\\tARTIFACT\\tVERSION\\tFILE_PATH
+
+Deduplication uses `gradle.ext.jalFoundArtifacts', an ExtraPropertiesExtension
+map that is visible across all project closures in an init script. Resolution
+runs inside `afterEvaluate' to comply with Gradle 9's exclusive lock
+requirements for configuration resolution. Configurations are queried in
+runtime-first order so Gradle's own conflict-resolved runtime version always
+wins over compile-only variants."
   (let* ((quoted-agents
            (mapconcat (lambda (id) (format "\"%s\"" id)) agents-list ", "))
           (init-file (make-temp-file "jal-gradle-init" nil ".gradle")))
     (with-temp-file init-file
       (insert (format
-                "allprojects {
+                "// gradle.ext is an ExtraPropertiesExtension visible across all project
+// closures in an init script.
+gradle.ext.jalFoundArtifacts = [:]
+
+// Resolution must occur inside afterEvaluate (or during task execution) to
+// hold the project's exclusive lock, preventing Gradle 9 thread-safety errors.
+allprojects {
   afterEvaluate { proj ->
     def targets = [%s] as Set
-    def foundPaths = [] as Set
-    ['runtimeClasspath', 'compileClasspath', 'annotationProcessor', 'testCompileClasspath'].each { cfgName ->
+    // runtimeClasspath is listed first so its conflict-resolved version
+    // takes precedence over compileClasspath or test variants.
+    ['runtimeClasspath', 'testRuntimeClasspath', 'compileClasspath',
+     'annotationProcessor', 'testCompileClasspath'].each { cfgName ->
       def cfg = proj.configurations.findByName(cfgName)
-      if (cfg) {
+      // canBeResolved was added in Gradle 3.3; older versions lack the
+      // property, so we default to true and let the catch handle failures.
+      def resolvable = cfg != null && (cfg.hasProperty('canBeResolved') ? cfg.canBeResolved : true)
+      if (resolvable) {
         try {
           cfg.resolvedConfiguration.resolvedArtifacts
-            .findAll { targets.contains(it.name) }
+            .findAll { targets.contains(it.name) && !gradle.ext.jalFoundArtifacts.containsKey(it.name) }
             .each { art ->
-              if (foundPaths.add(art.file.absolutePath)) {
-                println \"JAL_ARTIFACT\\t${art.moduleVersion.id.group}\\t${art.name}\\t${art.moduleVersion.id.version}\\t${art.file.absolutePath}\"
-              }
+              gradle.ext.jalFoundArtifacts[art.name] = true
+              println \"JAL_ARTIFACT\\t${art.moduleVersion.id.group}\\t${art.name}\\t${art.moduleVersion.id.version}\\t${art.file.absolutePath}\"
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+          System.err.println(\"JAL: resolution failed for ${cfgName} in ${proj.name}: ${e.message}\")
+        }
       }
     }
   }
@@ -58,12 +77,13 @@ resolved artifact in the format:
 
 (defun jal--gradle-parse-init-output (output)
   "Parse OUTPUT from the JAL Gradle init script.
-Returns an alist of (artifact-id . (group version absolute-path)) entries."
+Returns a list of (artifact-id group version absolute-path) entries.
+Deduplication must have been handled beforehand, with each artifact appearing
+only once in OUTPUT."
   (let ((results '()))
     (dolist (line (split-string output "\n" t))
       (when (string-prefix-p "JAL_ARTIFACT\t" line)
-        (let* (
-                (parts (split-string line "\t" t))
+        (let* ((parts     (split-string line "\t" t))
                 (group    (nth 1 parts))
                 (artifact (nth 2 parts))
                 (version  (nth 3 parts))
@@ -119,9 +139,10 @@ or nil on failure."
                         (let ((agent-path
                                 (if (and abs-path (file-exists-p abs-path))
                                   abs-path
-                                  (jal--resolve-agent-path
-                                    (file-name-directory abs-path)
-                                    group-id artifact-id version))))
+                                  (when abs-path
+                                    (jal--resolve-agent-path
+                                      (file-name-directory abs-path)
+                                      group-id artifact-id version)))))
                           (when agent-path
                             (push (list artifact-id agent-path version) found-agents)))))
                     (when (null found-agents)
