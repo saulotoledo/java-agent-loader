@@ -26,7 +26,7 @@
 ;;
 ;; Java Agent Loader (JAL) automates the manual injection of `-javaagent'
 ;; arguments into the JDT Language Server (JDTLS) process used by development
-;; environments like `lsp-mode' (with or without `lsp-java') or `eglot-java'.
+;; environments like `lsp-mode' or `eglot', with or without Java extensions.
 ;;
 ;; In the Java ecosystem, a "Java Agent" is a native JVM plugin that uses
 ;; bytecode instrumentation to modify compiled code on the fly as it loads
@@ -50,7 +50,7 @@
 (autoload 'jal-lsp-java-mode "jal-client-lsp"
   "Toggle JAL integration with JDTLS in lsp-mode (global minor mode)." t)
 (autoload 'jal-eglot-java-mode "jal-client-eglot"
-  "Toggle JAL integration with eglot-java (global minor mode)." t)
+  "Toggle JAL integration with Java servers in Eglot (global minor mode)." t)
 
 ;; ====================================================================
 ;; Build System Specific Detection Helpers

@@ -73,9 +73,9 @@ lsp-java otherwise shares one `-data' directory across all projects, so a
 project opened earlier can break the initialization of the next one."
   (let ((project (project-current)))
     (setq-local lsp-java-workspace-dir
-                (jal-dev/jdtls-fresh-data-dir
-                 jal-dev/lsp-java-workspace-base
-                 (if project (project-root project) default-directory)))))
+      (jal-dev/jdtls-fresh-data-dir
+        jal-dev/lsp-java-workspace-base
+        (if project (project-root project) default-directory)))))
 
 ;; Run before the `lsp' entries added by `use-package' above.
 (add-hook 'java-mode-hook #'jal-dev/lsp-java-set-workspace -90)

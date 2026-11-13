@@ -14,7 +14,7 @@ argument when launching the JVM.
 
 JAL is an Emacs package that automates this manual configuration for your
 development environment. It bridges the gap between your project’s build
-configuration and your LSP client (=lsp-mode= or =eglot-java=) by managing that
+configuration and your LSP client (=lsp-mode= or =eglot=) by managing that
 command-line injection behind the scenes.
 
 #+begin_quote
@@ -50,7 +50,7 @@ Enable *exactly one* global integration mode (never both, never in a hook):
 | Mode                  | Requires package                 | Activate with             |
 |-----------------------+----------------------------------+---------------------------|
 | ~jal-lsp-java-mode~   | =lsp-mode= (optional =lsp-java=) | =(jal-lsp-java-mode 1)=   |
-| ~jal-eglot-java-mode~ | =eglot-java=                     | =(jal-eglot-java-mode 1)= |
+| ~jal-eglot-java-mode~ | =eglot= (optional =eglot-java=)  | =(jal-eglot-java-mode 1)= |
 
 #+begin_src elisp
 ;; ✓ CORRECT: top-level :config block
@@ -102,8 +102,8 @@ for the lifetime of the Emacs session.
 
 ** Features
 
-- /LSP Integration/: Works with =lsp-mode=, with or without =lsp-java=, and with
-  =eglot-java=.
+- /LSP Integration/: Works with =lsp-mode= and =eglot=, with or without their
+  Java extension packages.
 - /Preserves User Configuration/: Builds JDTLS agent arguments for each startup
   without changing registered commands, =lsp-java-vmargs=, or
   =eglot-java-eclipse-jdt-args=.
@@ -118,12 +118,13 @@ for the lifetime of the Emacs session.
 
 *** Prerequisites
 
-Install either =lsp-mode= or =eglot-java= (plain Eglot is not yet supported).
-For =lsp-mode=, =lsp-java= is optional:
+Use either =lsp-mode= or =eglot=; their Java extension packages are optional:
 
+- =eglot= - built into Emacs 29 and newer, or installed separately on Emacs 28.
+  Its default Java mapping recognizes =jdtls=.
 - [[https://github.com/emacs-lsp/lsp-mode][lsp-mode]] - register a local JDTLS stdio client as shown below.
 - [[https://github.com/emacs-lsp/lsp-java][lsp-java]] - optional Java features and JDTLS setup for lsp-mode.
-- [[https://github.com/yveszoundi/eglot-java][eglot-java]] - required for the current Eglot integration.
+- [[https://github.com/yveszoundi/eglot-java][eglot-java]] - optional Java features and JDTLS setup for Eglot.
 
 Without a Java extension package, install a suitable JDK and JDTLS separately. A
 JDK does not include JDTLS. Put the =jdtls= launcher on Emacs's
@@ -252,8 +253,8 @@ To add agents or override known-agent defaults, set ~jal-additional-agents~
   (jal-lsp-java-mode 1)) ; or (jal-eglot-java-mode 1)
 #+end_src
 
-JAL hooks into ~lsp-mode~ and ~eglot-java~ once you enable ~jal-lsp-java-mode~
-or ~jal-eglot-java-mode~. These are global modes -- enable one once at the top
+JAL hooks into ~lsp-mode~ and ~eglot~ once you enable ~jal-lsp-java-mode~ or
+~jal-eglot-java-mode~. These are global modes -- enable one once at the top
 level; no further setup is needed in the ~lsp-java~ or ~eglot-java~ blocks.
 
 *** ~jal-additional-agents~ Entry Format
@@ -389,10 +390,33 @@ which lsp-mode applies later and only for some transports. If a custom stdio
 client sets ~JAVA_HOME~ or ~PATH~ through ~:environment-fn~, pass
 ~--java-executable~ to JDTLS so JAL and the server use the same JVM.
 
+** Usage with Eglot without eglot-java
+
+With the JDK/JDTLS prerequisites above and JAL installed, enable the existing
+global mode once. Eglot's default Java server mapping already recognizes =jdtls=
+on Emacs's =PATH=/=exec-path=:
+
+#+begin_src elisp
+(require 'eglot)
+(require 'jal)
+
+(jal-eglot-java-mode 1)
+(add-hook 'java-mode-hook #'eglot-ensure)
+(add-hook 'java-ts-mode-hook #'eglot-ensure)
+#+end_src
+
+JAL uses the shared launcher rules described above: ~--jvm-arg=-javaagent:...~
+for the JDTLS wrapper, or bare JVM flags before =-jar= for direct Java commands.
+It preserves trailing Eglot initargs and the registered command. Unknown
+launchers, network contacts (~:autoport~), and remote projects are left alone;
+JAL reports each such reason once per session in the echo area. Use a distinct
+=-data= directory per project when the wrapper's default would collide.
+
 ** Usage with eglot-java
 
-~eglot-java~ is required (not plain ~eglot~). Enable ~jal-eglot-java-mode~ (a
-global mode) once in your configuration.
+Enable ~jal-eglot-java-mode~ once and retain your existing server configuration.
+The same Eglot adapter handles the command supplied by =eglot-java=; no manual
+agent configuration in =eglot-java-eclipse-jdt-args= is needed.
 
 #+begin_src elisp
 (use-package jal
@@ -408,9 +432,9 @@ global mode) once in your configuration.
          (java-ts-mode . eglot-java-mode)))
 #+end_src
 
-Internally JAL installs an ~:around~ advice on ~eglot-java--eclipse-jdt-contact~
-that dynamically extends ~eglot-java-eclipse-jdt-args~ with the resolved
-~-javaagent~ arguments for each server startup.
+JAL injects at Eglot's resolved contact boundary and selects the launcher JVM
+from the command and environment. Following agent discovery, JAL shuts down and
+relaunches Eglot with a fresh contact so it reads the newly cached agents.
 
 ** How agent detection works
 

@@ -41,20 +41,19 @@
 
 (defun jal-dev/lsp-mode-command ()
   "Build a JDTLS command with a separate data directory per project root."
-  (let ((data (expand-file-name
-               (secure-hash 'sha1 (expand-file-name default-directory))
-               (expand-file-name ".jdtls-lsp-mode/workspace/" jal-dev/repo-root))))
-    (make-directory data t)
-    (list jal-dev/jdtls-launcher "-data" data)))
+  (jal-dev/jdtls-command
+    jal-dev/jdtls-launcher
+    (expand-file-name ".jdtls-lsp-mode/workspace/" jal-dev/repo-root)
+    default-directory))
 
 (lsp-register-client
- (make-lsp-client
-  :new-connection (lsp-stdio-connection #'jal-dev/lsp-mode-command)
-  :activation-fn (lsp-activate-on "java")
-  ;; JDTLS sends custom notifications that only lsp-java handles.
-  :notification-handlers (ht ("language/status" #'ignore)
+  (make-lsp-client
+    :new-connection (lsp-stdio-connection #'jal-dev/lsp-mode-command)
+    :activation-fn (lsp-activate-on "java")
+    ;; JDTLS sends custom notifications that only lsp-java handles.
+    :notification-handlers (ht ("language/status" #'ignore)
                              ("language/actionableNotification" #'ignore))
-  :server-id 'jdtls))
+    :server-id 'jdtls))
 
 (use-package jal
   :load-path jal-dev/project-root

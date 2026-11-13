@@ -72,6 +72,13 @@ package's existing license.
 
 * Client adapter checks
 
+Check the Eglot adapter against built-in Eglot without Java or JDTLS:
+
+#+begin_src sh
+emacs --batch -Q -L . -l tests/jal-eglot-integration-test.el \
+  -f ert-run-tests-batch-and-exit
+#+end_src
+
 Run the dependency-free suite with ~make test~. If ~lsp-mode~ is installed,
 run the real-framework checks separately (no JDTLS download required):
 
@@ -80,6 +87,9 @@ emacs --batch -Q --eval "(progn (require 'package) (package-initialize))" \
   -L . -l tests/jal-lsp-integration-test.el -f ert-run-tests-batch-and-exit
 #+end_src
 
-The compatibility case also checks ~lsp-java~ when it is installed; otherwise
-that case is skipped. To inspect a real Java server, use the ~lsp-mode~ or
-~lsp-java~ development sandbox described in ~dev/test-projects/README.org~.
+The compatibility cases check the Java extension package when it is on the load
+path; otherwise those cases are skipped. To also check an installed Eglot or
+~eglot-java~, run the Eglot command with ~--eval "(progn (require 'package)
+(package-initialize))"~ before ~-L .~. To inspect a real Java server, use the
+~eglot~, ~eglot-java~, ~lsp-mode~ or ~lsp-java~ sandbox described in
+~dev/test-projects/README.org~.

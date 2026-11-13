@@ -4,3 +4,5 @@
 .pkg-lsp-mode/
 .jdtls-lsp-java/
 .pkg-lsp-java/
+.jdtls-eglot-java/
+.pkg-eglot-java/

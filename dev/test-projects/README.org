@@ -1,6 +1,6 @@
 * Example Projects
 Minimal apps for manually testing JAL agent detection with ~lsp-mode~ (with or
-without ~lsp-java~) or ~eglot-java~.
+without ~lsp-java~) or Eglot (with or without ~eglot-java~).
 
 Use ~lsp-java~ to launch the lsp-java sandbox, or ~lsp-mode~ to launch without
 lsp-java:
@@ -9,11 +9,21 @@ lsp-java:
 ./dev/env/start-dev-env.sh lsp-mode dev/test-projects/maven
 #+end_src
 
-The plain sandbox uses ~jdtls~ on PATH or downloads it into its development
+Use ~eglot~ for plain Eglot or ~eglot-java~ for its Java extension:
+
+#+begin_src shell
+./dev/env/start-dev-env.sh eglot dev/test-projects/maven
+./dev/env/start-dev-env.sh eglot-java dev/test-projects/maven
+#+end_src
+
+The plain sandboxes use ~jdtls~ on PATH or download it into their development
 cache. The ~lsp-java~ sandbox always downloads JDTLS into its own cache, since
 ~lsp-java~ expects a full installation there (otherwise it would build the
-server with Maven). A suitable JDK must already be installed. Open a Java file
-after launch to start the server and agent discovery.
+server with Maven). Every sandbox that manages its own JDTLS workspace empties
+that project's workspace on first use per Emacs session, because a persisted
+Buildship model can deadlock JDTLS startup. A suitable JDK must already be
+installed. Open a Java file after launch to start the server and agent
+discovery.
 
 ** Single-module projects (~maven/~, ~gradle/~)
 Minimal single-module bookstore apps. Both declare the three agents in

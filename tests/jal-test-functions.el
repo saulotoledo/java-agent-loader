@@ -20,19 +20,19 @@
   "Call THUNK with function BINDINGS, restoring definitions on exit."
   (let ((saved (mapcar (lambda (binding)
                          (cons (car binding) (symbol-function (car binding))))
-                       bindings)))
+                 bindings)))
     (unwind-protect
-        (progn
-          (dolist (binding bindings) (fset (car binding) (cdr binding)))
-          (funcall thunk))
+      (progn
+        (dolist (binding bindings) (fset (car binding) (cdr binding)))
+        (funcall thunk))
       (dolist (binding saved) (fset (car binding) (cdr binding))))))
 
 (defmacro jal-test--with-functions (bindings &rest body)
   "Run BODY with temporary function BINDINGS."
   (declare (indent 1))
   `(jal-test--call-with-functions
-    (list ,@(mapcar (lambda (binding) `(cons ',(car binding) ,(cadr binding))) bindings))
-    (lambda () ,@body)))
+     (list ,@(mapcar (lambda (binding) `(cons ',(car binding) ,(cadr binding))) bindings))
+     (lambda () ,@body)))
 
 (provide 'jal-test-functions)
 ;;; jal-test-functions.el ends here

@@ -35,70 +35,70 @@
 
 (ert-deftest jal-integration/real-resolver ()
   (unwind-protect
-      (progn
-        (jal-lsp-java-mode 1)
-        (jal-test--with-functions
-            ((jal-get-vmargs-with-javaagents (lambda () '("-javaagent:/agent.jar"))))
-          (with-temp-buffer
-            (setq buffer-file-name "/tmp/Main.java")
-            (let ((jal--lsp-start-buffer (current-buffer))
-                  (command '("jdtls" nil "-data" "/tmp/ws"))
-                  (calls 0))
-              (should (equal '("jdtls" "-data" "/tmp/ws" "--jvm-arg=-javaagent:/agent.jar")
-                             (lsp-resolve-final-command command)))
-              (should (equal '("jdtls" nil "-data" "/tmp/ws") command))
-              (should (equal '("java" "-Xmx1G" "-javaagent:/agent.jar" "-jar" "x")
-                             (lsp-resolve-final-command
-                              (lambda () (setq calls (1+ calls))
-                                '("java" "-Xmx1G" "-jar" "x")))))
-              (should (= calls 1))
-              (should (equal '("jdtls") (lsp-resolve-final-command "jdtls" t)))
-              (should-error (lsp-resolve-final-command '("jdtls" 3)))
-              (should-error (lsp-resolve-final-command (lambda () (error "failed"))))))))
+    (progn
+      (jal-lsp-java-mode 1)
+      (jal-test--with-functions
+        ((jal-get-vmargs-with-javaagents (lambda () '("-javaagent:/agent.jar"))))
+        (with-temp-buffer
+          (setq buffer-file-name "/tmp/Main.java")
+          (let ((jal--lsp-start-buffer (current-buffer))
+                 (command '("jdtls" nil "-data" "/tmp/ws"))
+                 (calls 0))
+            (should (equal '("jdtls" "-data" "/tmp/ws" "--jvm-arg=-javaagent:/agent.jar")
+                      (lsp-resolve-final-command command)))
+            (should (equal '("jdtls" nil "-data" "/tmp/ws") command))
+            (should (equal '("java" "-Xmx1G" "-javaagent:/agent.jar" "-jar" "x")
+                      (lsp-resolve-final-command
+                        (lambda () (setq calls (1+ calls))
+                          '("java" "-Xmx1G" "-jar" "x")))))
+            (should (= calls 1))
+            (should (equal '("jdtls") (lsp-resolve-final-command "jdtls" t)))
+            (should-error (lsp-resolve-final-command '("jdtls" 3)))
+            (should-error (lsp-resolve-final-command (lambda () (error "failed"))))))))
     (jal-lsp-java-mode -1)))
 
 (ert-deftest jal-integration/real-startup-and-stdio-transports ()
   (let ((directory (make-temp-file "jal-lsp-integration-" t))
-        (original-make-process (symbol-function 'make-process))
-        (processes nil))
+         (original-make-process (symbol-function 'make-process))
+         (processes nil))
     (unwind-protect
-        (progn
-          (jal-lsp-java-mode 1)
-          (jal-test--with-functions
-              ((jal-get-vmargs-with-javaagents (lambda () '("-javaagent:/agent.jar")))
-               (lsp--spinner-start #'ignore)
-               ;; Initialization stays pending: we are checking actual startup
-               ;; and command transport, not implementing a fake Java server.
-               (lsp-request-async (lambda (&rest _) nil)))
-            (with-temp-buffer
-              (setq buffer-file-name (expand-file-name "Main.java" directory))
-              (setq default-directory (file-name-as-directory directory))
-              (dolist (native '(nil t))
-                (let* ((seen nil)
-                       (client (make-lsp-client
+      (progn
+        (jal-lsp-java-mode 1)
+        (jal-test--with-functions
+          ((jal-get-vmargs-with-javaagents (lambda () '("-javaagent:/agent.jar")))
+            (lsp--spinner-start #'ignore)
+            ;; Initialization stays pending: we are checking actual startup
+            ;; and command transport, not implementing a fake Java server.
+            (lsp-request-async (lambda (&rest _) nil)))
+          (with-temp-buffer
+            (setq buffer-file-name (expand-file-name "Main.java" directory))
+            (setq default-directory (file-name-as-directory directory))
+            (dolist (native '(nil t))
+              (let* ((seen nil)
+                      (client (make-lsp-client
                                 :server-id 'jdtls
                                 :new-connection (lsp-stdio-connection '("jdtls"))))
-                       (session (make-lsp-session)))
-                  (jal-test--with-functions
-                      ((json-rpc-connection (and native #'ignore))
-                       (lsp-json-rpc-connection
-                        (lambda (_workspace command)
-                          (setq seen command)
-                          (cons 'native-process 'native-process)))
-                       (make-process
-                        (lambda (&rest args)
-                          (setq seen (plist-get args :command))
-                          ;; Exercise the ordinary transport's real process and
-                          ;; stderr handling using cat instead of launching Java.
-                          (let ((proc (apply original-make-process
-                                             (plist-put args :command '("cat")))))
-                            (push proc processes)
-                            proc))))
-                    (let ((workspace (lsp--start-workspace session client default-directory)))
-                      (should (equal '("jdtls" "--jvm-arg=-javaagent:/agent.jar") seen))
-                      (should (eq (car (gethash workspace jal--lsp-workspace-contexts))
-                                  (current-buffer)))
-                      (should (eq 'jdtls (lsp--workspace-server-id workspace))))))))))
+                      (session (make-lsp-session)))
+                (jal-test--with-functions
+                  ((json-rpc-connection (and native #'ignore))
+                    (lsp-json-rpc-connection
+                      (lambda (_workspace command)
+                        (setq seen command)
+                        (cons 'native-process 'native-process)))
+                    (make-process
+                      (lambda (&rest args)
+                        (setq seen (plist-get args :command))
+                        ;; Exercise the ordinary transport's real process and
+                        ;; stderr handling using cat instead of launching Java.
+                        (let ((proc (apply original-make-process
+                                      (plist-put args :command '("cat")))))
+                          (push proc processes)
+                          proc))))
+                  (let ((workspace (lsp--start-workspace session client default-directory)))
+                    (should (equal '("jdtls" "--jvm-arg=-javaagent:/agent.jar") seen))
+                    (should (eq (car (gethash workspace jal--lsp-workspace-contexts))
+                              (current-buffer)))
+                    (should (eq 'jdtls (lsp--workspace-server-id workspace))))))))))
       (jal-lsp-java-mode -1)
       (dolist (proc processes)
         (set-process-sentinel proc #'ignore)
@@ -111,32 +111,32 @@
   (skip-unless (locate-library "lsp-java"))
   (require 'lsp-java)
   (let* ((directory (make-temp-file "jal-lsp-java-test-" t))
-         (lsp-java-server-install-dir directory)
-         (lsp-java-server-config-dir directory)
-         (lsp-java-workspace-dir (expand-file-name "workspace" directory))
-         (lsp-java-java-path "java")
-         (lsp-java-vmargs '("-Xmx1G")))
+          (lsp-java-server-install-dir directory)
+          (lsp-java-server-config-dir directory)
+          (lsp-java-workspace-dir (expand-file-name "workspace" directory))
+          (lsp-java-java-path "java")
+          (lsp-java-vmargs '("-Xmx1G")))
     (unwind-protect
-        (progn
-          (make-directory (expand-file-name "plugins" directory))
-          (with-temp-file (expand-file-name "plugins/org.eclipse.equinox.launcher_1.jar" directory))
-          (make-directory (expand-file-name "bin" directory))
-          (let ((launcher (expand-file-name "bin/jdtls" directory)))
-            (with-temp-file launcher (insert "#!/bin/sh\n"))
-            (set-file-modes launcher #o755))
-          (jal-lsp-java-mode 1)
-          (jal-test--with-functions
-              ((jal-get-vmargs-with-javaagents (lambda () '("-javaagent:/agent.jar")))
-               (lsp-java--java-9-plus-p (lambda () nil)))
-            (with-temp-buffer
-              (setq buffer-file-name (expand-file-name "Main.java" directory))
-              (let ((jal--lsp-start-buffer (current-buffer)))
-                (dolist (native '(nil t))
-                  (let* ((lsp-java-jdt-ls-prefer-native-command native)
-                         (command (lsp-resolve-final-command #'lsp-java--ls-command)))
-                    (should (member (if native "--jvm-arg=-javaagent:/agent.jar"
-                                      "-javaagent:/agent.jar") command))
-                    (should (equal '("-Xmx1G") lsp-java-vmargs))))))))
+      (progn
+        (make-directory (expand-file-name "plugins" directory))
+        (with-temp-file (expand-file-name "plugins/org.eclipse.equinox.launcher_1.jar" directory))
+        (make-directory (expand-file-name "bin" directory))
+        (let ((launcher (expand-file-name "bin/jdtls" directory)))
+          (with-temp-file launcher (insert "#!/bin/sh\n"))
+          (set-file-modes launcher #o755))
+        (jal-lsp-java-mode 1)
+        (jal-test--with-functions
+          ((jal-get-vmargs-with-javaagents (lambda () '("-javaagent:/agent.jar")))
+            (lsp-java--java-9-plus-p (lambda () nil)))
+          (with-temp-buffer
+            (setq buffer-file-name (expand-file-name "Main.java" directory))
+            (let ((jal--lsp-start-buffer (current-buffer)))
+              (dolist (native '(nil t))
+                (let* ((lsp-java-jdt-ls-prefer-native-command native)
+                        (command (lsp-resolve-final-command #'lsp-java--ls-command)))
+                  (should (member (if native "--jvm-arg=-javaagent:/agent.jar"
+                                    "-javaagent:/agent.jar") command))
+                  (should (equal '("-Xmx1G") lsp-java-vmargs))))))))
       (jal-lsp-java-mode -1)
       (delete-directory directory t))))
 

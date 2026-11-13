@@ -170,10 +170,10 @@
 (ert-deftest jal-test/detect-finalize-keeps-java-key-from-start ()
   "Results are finalized under the JVM active when detection started."
   (let* ((jal--detection-in-progress nil)
-         (jal-agents-config '(("lombok" :params "")))
-         (current "/jdk-first/java")
-         (jal-current-java-key-function (lambda () current))
-         (deferred nil) (seen nil))
+          (jal-agents-config '(("lombok" :params "")))
+          (current "/jdk-first/java")
+          (jal-current-java-key-function (lambda () current))
+          (deferred nil) (seen nil))
     (cl-letf (((symbol-function 'jal--defer-in-buffer)
                 (lambda (_b _d fn &rest args) (setq deferred (cons fn args))))
                ((symbol-function 'jal--detect-agents-core-async)
@@ -219,138 +219,8 @@
 ;; jal-client-eglot advice installation
 ;; ---------------------------------------------------------------------------
 
-;; Stub out eglot-java symbols.
-(defvar eglot-java-eclipse-jdt-args '("-Xmx1G"))
-
-(defun eglot-java--eclipse-jdt-contact (_interactive)
-  "Return the contact specification for connecting to the JDTLS server with Eglot.
-The return value is a cons cell as expected by Eglot's server connection logic."
-  (cons 'eglot-java-eclipse-jdt '("java" "-jar" "jdtls.jar")))
-
-(defun eglot-java--find-java-program-from-alternatives ()
-  "Find the path to the 'java' executable.
-Returns the first matching executable in the current PATH."
-  (executable-find "java"))
-
-(require 'jal-client-eglot)
-
-(ert-deftest jal-test/eglot-mode-off-by-default ()
-  "Loading the package does not auto-enable eglot integration."
-  (should (null (default-value 'jal-eglot-java-mode))))
-
-(ert-deftest jal-test/eglot-mode-installs-advice ()
-  "`jal-eglot-java-mode' installs a proper eglot-java around advice."
-  (jal-eglot-java-mode 1)
-  (should (advice-member-p #'jal--eglot-java-contact-advice 'eglot-java--eclipse-jdt-contact))
-  (jal-eglot-java-mode -1))
-
-(ert-deftest jal-test/eglot-mode-off-removes-advice-and-hooks ()
-  "`jal-eglot-java-mode -1' removes the advice and all registered hooks."
-  (jal-eglot-java-mode 1)
-  (jal-eglot-java-mode -1)
-  (should-not (advice-member-p #'jal--eglot-java-contact-advice 'eglot-java--eclipse-jdt-contact))
-  (should-not (memq #'jal--eglot-connect-hook-check-interface eglot-connect-hook))
-  (should-not (memq #'jal--eglot-connect-hook-find-agents eglot-connect-hook))
-  (should-not (memq #'jal--eglot-reconnect jal-agents-detected-hook)))
-
-(ert-deftest jal-test/eglot-mode-toggle-is-idempotent ()
-  "Enabling twice does not stack advice or duplicate hooks; disabling cleans up."
-  (jal-eglot-java-mode 1)
-  (jal-eglot-java-mode 1)
-  (should jal-eglot-java-mode)
-  (should (= 1 (cl-count #'jal--eglot-connect-hook-check-interface eglot-connect-hook)))
-  (jal-eglot-java-mode -1)
-  (should-not jal-eglot-java-mode)
-  (should-not (advice-member-p #'jal--eglot-java-contact-advice 'eglot-java--eclipse-jdt-contact)))
-
-(ert-deftest jal-test/eglot-orig-callable-after-disable ()
-  "After disabling, eglot-java--eclipse-jdt-contact still returns the bare contact."
-  (jal-eglot-java-mode 1)
-  (jal-eglot-java-mode -1)
-  (should (equal (cons 'eglot-java-eclipse-jdt '("java" "-jar" "jdtls.jar"))
-            (eglot-java--eclipse-jdt-contact nil))))
-
-(ert-deftest jal-test/eglot-mode-does-not-warn-when-function-missing ()
-  "`jal-eglot-java-mode' does not warn at enable time; warn deferred to the hook."
-  (cl-letf (((symbol-function 'eglot-java--eclipse-jdt-contact) nil))
-    (let ((warned nil))
-      (cl-letf (((symbol-function 'display-warning)
-                  (lambda (_type msg &rest _) (setq warned msg))))
-        (jal-eglot-java-mode 1))
-      ;; No warning should be emitted during enable itself.
-      (should (null warned))
-      (should (memq #'jal--eglot-connect-hook-check-interface eglot-connect-hook))))
-  (jal-eglot-java-mode -1))
-
-(ert-deftest jal-test/eglot-check-interface-warns-when-function-missing ()
-  "`jal--eglot-java-check-interface' warns when function is not defined."
-  (let ((jal--eglot-java-interface-warning-issued nil))
-    (cl-letf (((symbol-function 'eglot-java--eclipse-jdt-contact) nil))
-      (let ((warned nil))
-        (cl-letf (((symbol-function 'display-warning)
-                    (lambda (_type msg &rest _) (setq warned msg))))
-          (jal--eglot-java-check-interface))
-        (should warned)
-        (should (string-match-p "eglot-java--eclipse-jdt-contact" warned))))))
-
-(ert-deftest jal-test/eglot-check-interface-silent-when-function-present ()
-  "`jal--eglot-java-check-interface' is silent when funtion exists."
-  (let ((jal--eglot-java-interface-warning-issued nil)
-         (warned nil))
-    (cl-letf (((symbol-function 'display-warning)
-                (lambda (_type msg &rest _) (setq warned msg))))
-      (jal--eglot-java-check-interface))
-    (should (null warned))))
-
-(ert-deftest jal-test/eglot-check-interface-warns-only-once ()
-  "`jal--eglot-java-check-interface' warns at most once per session."
-  (let ((jal--eglot-java-interface-warning-issued nil)
-         (warn-count 0))
-    (cl-letf (((symbol-function 'eglot-java--eclipse-jdt-contact) nil)
-               ((symbol-function 'display-warning)
-                 (lambda (_type _msg &rest _) (cl-incf warn-count))))
-      (jal--eglot-java-check-interface)
-      (jal--eglot-java-check-interface)
-      (jal--eglot-java-check-interface))
-    (should (= 1 warn-count))))
-
-(ert-deftest jal-test/eglot-advice-does-not-mutate-args ()
-  "The eglot-java advice does not permanently modify eglot-java-eclipse-jdt-args."
-  (let ((original-args (copy-sequence eglot-java-eclipse-jdt-args)))
-    (advice-add 'eglot-java--eclipse-jdt-contact :around #'jal--eglot-java-contact-advice)
-    (eglot-java--eclipse-jdt-contact nil)
-    (should (equal original-args eglot-java-eclipse-jdt-args))
-    (advice-remove 'eglot-java--eclipse-jdt-contact #'jal--eglot-java-contact-advice)))
-
-(ert-deftest jal-test/eglot-reconnect-reloads-via-eglot ()
-  "`jal--eglot-reconnect' shuts down then interactively calls `eglot'."
-  (let ((calls '())
-         (jal--eglot-reload-buffer nil))
-    (unwind-protect
-      (progn
-        (fset 'eglot-current-server (lambda () 'server))
-        (fset 'eglot-shutdown (lambda (&rest _) (push 'shutdown calls)))
-        (fset 'eglot (lambda (&rest _) (interactive) (push 'eglot calls)))
-        (with-temp-buffer
-          ;; Run the deferred body directly (skip run-at-time in batch).
-          (jal--eglot-reconnect-in-buffer (current-buffer)))
-        (should (equal (nreverse calls) '(shutdown eglot))))
-      (fmakunbound 'eglot-current-server)
-      (fmakunbound 'eglot-shutdown)
-      (fmakunbound 'eglot))))
-
-(ert-deftest jal-test/eglot-connect-hook-defers-find-agents ()
-  "`jal--eglot-connect-hook-find-agents' schedules via `jal--defer'."
-  (let ((deferred-fn nil)
-         (deferred-args nil)
-         (jal--eglot-reload-buffer 'fake-buf))
-    (cl-letf (((symbol-function 'jal--defer)
-                (lambda (fn &rest args)
-                  (setq deferred-fn fn)
-                  (setq deferred-args args))))
-      (jal--eglot-connect-hook-find-agents nil)
-      (should (eq deferred-fn #'jal--eglot-find-agents-in-buffer))
-      (should (equal deferred-args '(fake-buf))))))
+(load (expand-file-name "jal-eglot-test.el"
+        (file-name-directory (or load-file-name buffer-file-name))) nil t)
 
 ;; ---------------------------------------------------------------------------
 ;; jal-build-gradle helpers
