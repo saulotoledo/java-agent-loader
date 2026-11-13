@@ -96,32 +96,32 @@ With SKIP-PATH non-nil, ignore PATH and always use DESTINATION, for clients
 such as `lsp-java' that expect a complete server installation there.
 Downloads are confined to this development helper, never the JAL modes."
   (or (and (not skip-path) (executable-find "jdtls"))
-      (let ((launcher (expand-file-name
-                       (if (eq system-type 'windows-nt) "bin/jdtls.bat" "bin/jdtls")
-                       destination))
-            (plugins (expand-file-name "plugins" destination)))
+    (let ((launcher (expand-file-name
+                      (if (eq system-type 'windows-nt) "bin/jdtls.bat" "bin/jdtls")
+                      destination))
+           (plugins (expand-file-name "plugins" destination)))
+      (unless (and (file-executable-p launcher) (file-directory-p plugins))
+        (require 'url-handlers)
+        (unless (executable-find "tar") (error "JDTLS setup requires tar"))
+        (let ((archive (make-temp-file "jal-jdtls-" nil ".tar.gz")))
+          (unwind-protect
+            (progn
+              (message "JAL dev: downloading JDTLS to %s" destination)
+              (url-copy-file jal-dev/jdtls-url archive t)
+              (make-directory destination t)
+              (with-temp-buffer
+                (unless (zerop (call-process "tar" nil t nil
+                                 "-xzf" archive "-C" destination))
+                  (error "JDTLS extraction failed: %s" (buffer-string)))))
+            (delete-file archive)))
         (unless (and (file-executable-p launcher) (file-directory-p plugins))
-          (require 'url-handlers)
-          (unless (executable-find "tar") (error "JDTLS setup requires tar"))
-          (let ((archive (make-temp-file "jal-jdtls-" nil ".tar.gz")))
-            (unwind-protect
-                (progn
-                  (message "JAL dev: downloading JDTLS to %s" destination)
-                  (url-copy-file jal-dev/jdtls-url archive t)
-                  (make-directory destination t)
-                  (with-temp-buffer
-                    (unless (zerop (call-process "tar" nil t nil
-                                                 "-xzf" archive "-C" destination))
-                      (error "JDTLS extraction failed: %s" (buffer-string)))))
-              (delete-file archive)))
-          (unless (and (file-executable-p launcher) (file-directory-p plugins))
-            (error "Incomplete JDTLS installation in %s" destination)))
-        launcher)))
+          (error "Incomplete JDTLS installation in %s" destination)))
+      launcher)))
 
 (defun jal-dev/jdtls-data-dir (workspace-directory root)
   "Return the JDTLS data directory under WORKSPACE-DIRECTORY for project ROOT."
   (expand-file-name (secure-hash 'sha1 (expand-file-name root))
-                    workspace-directory))
+    workspace-directory))
 
 (defvar jal-dev--fresh-data-dirs (make-hash-table :test 'equal)
   "Data directories already reset during this Emacs session.")
@@ -135,9 +135,15 @@ Later calls in the same session (e.g. a restart) keep the directory."
     (unless (gethash data jal-dev--fresh-data-dirs)
       (puthash data t jal-dev--fresh-data-dirs)
       (when (and (file-directory-p data)
-                 (string-prefix-p (expand-file-name workspace-directory) data))
+              (string-prefix-p (expand-file-name workspace-directory) data))
         (delete-directory data t)))
     data))
+
+(defun jal-dev/jdtls-command (launcher workspace-directory root)
+  "Return a JDTLS LAUNCHER command with data under WORKSPACE-DIRECTORY for ROOT."
+  (let ((data (jal-dev/jdtls-fresh-data-dir workspace-directory root)))
+    (make-directory data t)
+    (list launcher "-data" data)))
 
 (defun jal-dev/setup-project ()
   "Bind `project.el' to `JAL_DEV_PROJECT' and open it on startup.

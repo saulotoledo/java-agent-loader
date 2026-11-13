@@ -44,6 +44,8 @@
   "File buffer for the dynamically scoped JDTLS startup, or nil.")
 (defvar jal--lsp-supported-start nil
   "Non-nil when this startup resolved a supported launcher.")
+(defvar jal--lsp-start-root nil
+  "Workspace root for the dynamically scoped JDTLS startup, or nil.")
 (defvar jal--lsp-start-java nil
   "Launcher JVM resolved during the dynamically scoped JDTLS startup.")
 (defvar jal--lsp-workspace-contexts (make-hash-table :test 'eq :weakness 'key)
@@ -60,6 +62,7 @@ Only local JDTLS clients may inject agents."
              buffer-file-name (current-buffer)))
           (jal--lsp-supported-start nil)
           (jal--lsp-start-java nil)
+          (jal--lsp-start-root (and (stringp root) (file-name-as-directory root)))
           (directory default-directory)
           (workspace (apply orig-fn session client root args)))
     (when (and jal--lsp-supported-start (buffer-live-p jal--lsp-start-buffer))
@@ -75,24 +78,29 @@ Executable probes with TEST? set are left unchanged."
         (file-remote-p default-directory))
     (funcall orig-fn command test?)
     (let* ((resolved
-            (funcall orig-fn
-                     (lambda ()
-                       (let ((value (lsp-resolve-value command)))
-                         ;; Own the list: lsp-mode removes nils destructively.
-                         (if (consp value) (copy-sequence value) value)))
-                     test?))
-           (kind (jal--client-command-kind resolved)))
+             (funcall orig-fn
+               (lambda ()
+                 (let ((value (lsp-resolve-value command)))
+                   ;; Own the list: lsp-mode removes nils destructively.
+                   (if (consp value) (copy-sequence value) value)))
+               test?))
+            (kind (jal--client-command-kind resolved)))
       ;; Remote commands were excluded above, so resolution leaves a plain
       ;; argument list. Let lsp-mode handle validation and normalization.
       (with-current-buffer jal--lsp-start-buffer
         ;; The JVM is selected from Emacs's environment, not the client's
         ;; `:environment-fn', which lsp-mode applies later and per transport.
-        (setq jal--lsp-start-java (jal--client-command-java resolved kind))
+        ;; Relative executables and agent paths resolve against the directory
+        ;; the server launches from, not the buffer's. The buffer still
+        ;; identifies the project and keeps its environment.
+        (setq jal--lsp-start-java
+          (jal--client-command-java resolved kind jal--lsp-start-root))
         (setq jal--client-java jal--lsp-start-java)
         (when kind (setq jal--lsp-supported-start t))
         (if kind
-            (jal--client-inject-vmargs
-             resolved kind (jal-get-vmargs-with-javaagents))
+          (jal--client-inject-vmargs
+            resolved kind (jal-get-vmargs-with-javaagents)
+            jal--lsp-start-root)
           resolved)))))
 
 (defun jal--lsp-jdtls-workspace-p (workspace)
@@ -169,17 +177,11 @@ Falls back to the buffer's own selection, as set when a startup resolves."
                         (and (fboundp 'lsp--workspace-buffers)
                           (lsp--workspace-buffers workspace)))))))
     (when (and buffer (jal--lsp-jdtls-workspace-p workspace))
-      (progn
-        (jal--defer-in-buffer
-          buffer (if (eq buffer (car context)) (cdr context)
-                   (buffer-local-value 'default-directory buffer))
-          (lambda ()
-            (when (and jal-lsp-java-mode (buffer-live-p buffer))
-              ;; Fix the initializing workspace's JVM for this operation. The
-              ;; detection captures it for its asynchronous cache writes.
-              (let* ((java (gethash workspace jal--lsp-workspace-java))
-                      (jal--java-key-override (and java (file-truename java))))
-                (jal-find-and-configure-agents)))))))))
+      (jal--client-defer-find-agents
+        buffer (if (eq buffer (car context)) (cdr context)
+                 (buffer-local-value 'default-directory buffer))
+        'jal-lsp-java-mode
+        (gethash workspace jal--lsp-workspace-java)))))
 
 ;;;###autoload
 (define-minor-mode jal-lsp-java-mode

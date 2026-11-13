@@ -3,13 +3,14 @@
 #
 # Usage:
 #   ./dev/env/start-dev-env.sh eglot <project-dir>
+#   ./dev/env/start-dev-env.sh eglot-java <project-dir>
 #   ./dev/env/start-dev-env.sh lsp-java <project-dir>
 #   ./dev/env/start-dev-env.sh lsp-mode <project-dir> # plain lsp-mode
 #
 # Isolation model:
-#   /tmp/jal-{eglot,lsp-java,lsp-mode}-<PID>/  session-volatile Emacs state
+#   /tmp/jal-{client}-<PID>/     session-volatile Emacs state
 #                                deleted on exit (kill-emacs-hook + trap)
-#   dev/env/.pkg-{eglot,lsp-java,lsp-mode}/    ELPA packages   (persistent)
+#   dev/env/.pkg-{client}/      ELPA packages   (persistent)
 #   dev/env/.jdtls-{client}/     JDTLS server    (persistent)
 
 set -euo pipefail
@@ -18,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 usage() {
-  echo "Usage: $0 {eglot|lsp-java|lsp-mode} <project-dir>"
+  echo "Usage: $0 {eglot|eglot-java|lsp-java|lsp-mode} <project-dir>"
   exit 1
 }
 
@@ -31,6 +32,11 @@ case "$CLIENT" in
   eglot)
     INIT_FILE="$SCRIPT_DIR/init-eglot.el"
     TMP_PREFIX="jal-eglot"
+    LABEL="Eglot without eglot-java"
+    ;;
+  eglot-java)
+    INIT_FILE="$SCRIPT_DIR/init-eglot-java.el"
+    TMP_PREFIX="jal-eglot-java"
     LABEL="eglot-java"
     ;;
   lsp-java)
@@ -85,7 +91,7 @@ echo " /tmp sandbox        : $TMP_DIR  (deleted on exit)"
 echo " Packages (persist)  : $SCRIPT_DIR/.pkg-${CLIENT}"
 echo " LSP_USE_PLISTS      : unset (hash-table mode)"
 case "$CLIENT" in
-  eglot|lsp-mode) echo " JDTLS   (persist)   : $SCRIPT_DIR/.jdtls-${CLIENT}" ;;
+  eglot|eglot-java|lsp-mode) echo " JDTLS   (persist)   : $SCRIPT_DIR/.jdtls-${CLIENT}" ;;
 esac
 echo " Project             : $PROJECT_DIR"
 echo "----------------------------------------------"

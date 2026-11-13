@@ -1,4 +1,4 @@
-;;; init-eglot.el --- Isolated JAL + eglot-java test environment -*- lexical-binding: t; -*-
+;;; init-eglot.el --- Isolated JAL + plain Eglot test environment -*- lexical-binding: t; -*-
 
 ;; This program is free software: you can redistribute it and/or modify it under
 ;; the terms of the GNU General Public License as published by the Free Software
@@ -17,37 +17,35 @@
 
 ;;; Commentary:
 
-;; Usage: `emacs -Q -l /path/to/java-agent-loader/dev/env/init-eglot.el'
-;;        or: `./dev/env/start-dev-env.sh eglot [dev/test-projects/maven]'
-;;
-;; See `init-common.el' for the isolation model.
+;; ./dev/env/start-dev-env.sh eglot dev/test-projects/maven
+;; Uses Eglot without eglot-java. See init-common.el for isolation.
 
 ;;; Code:
 
 (load (expand-file-name "init-common"
-        (file-name-directory (or load-file-name buffer-file-name)))
-  nil t)
-
-(declare-function jal-dev/bootstrap "init-common")
-(declare-function jal-dev/setup-project "init-common")
-(declare-function jal-dev/announce "init-common")
-(defvar eglot-java-server-install-dir)
-(defvar eglot-stay-out-of)
-(defvar jal-dev/repo-root)
+        (file-name-directory (or load-file-name buffer-file-name))) nil t)
 
 (jal-dev/bootstrap 'eglot)
 
-(use-package eglot-java
-  :ensure t
+(use-package eglot
+  :ensure nil
   :demand t
-  :init
-  (setq eglot-java-server-install-dir
-    (expand-file-name ".jdtls-eglot" jal-dev/repo-root))
   :config
-  (add-to-list 'eglot-stay-out-of 'company)
-  :hook
-  (java-mode . eglot-java-mode)
-  (java-ts-mode . eglot-java-mode))
+  (add-to-list 'eglot-stay-out-of 'company))
+
+(defvar jal-dev/jdtls-launcher
+  (jal-dev/ensure-jdtls (expand-file-name ".jdtls-eglot/" jal-dev/repo-root))
+  "JDTLS executable for the plain Eglot sandbox.")
+
+(defun jal-dev/eglot-contact (_interactive project)
+  "Build a JDTLS contact with a separate data directory for PROJECT."
+  (jal-dev/jdtls-command
+    jal-dev/jdtls-launcher
+    (expand-file-name ".jdtls-eglot/workspace/" jal-dev/repo-root)
+    (project-root project)))
+
+(add-to-list 'eglot-server-programs
+  '((java-mode java-ts-mode) . jal-dev/eglot-contact))
 
 (use-package jal
   :load-path jal-dev/project-root
@@ -56,18 +54,9 @@
   :config
   (jal-eglot-java-mode 1))
 
+(add-hook 'java-mode-hook #'eglot-ensure)
+(add-hook 'java-ts-mode-hook #'eglot-ensure)
 (jal-dev/setup-project)
-
-;; eglot-java downloads JDTLS on demand; `plugins/' marks a complete install.
-(defun jal-dev/maybe-install-jdtls ()
-  "Install JDTLS via eglot-java if `plugins/' is missing."
-  (when (fboundp 'eglot-java-upgrade-lsp-server)
-    (let ((plugins (expand-file-name "plugins" eglot-java-server-install-dir)))
-      (unless (file-directory-p plugins)
-        (message "JAL dev: installing JDTLS via eglot-java-upgrade-lsp-server...")
-        (eglot-java-upgrade-lsp-server)))))
-
-(add-hook 'emacs-startup-hook #'jal-dev/maybe-install-jdtls)
-(jal-dev/announce "eglot")
+(jal-dev/announce "Eglot without eglot-java")
 
 ;;; init-eglot.el ends here
