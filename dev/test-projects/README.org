@@ -1,6 +1,19 @@
 * Example Projects
-Minimal apps for manually testing JAL agent detection with ~lsp-java~ /
-~eglot-java~.
+Minimal apps for manually testing JAL agent detection with ~lsp-mode~ (with or
+without ~lsp-java~) or ~eglot-java~.
+
+Use ~lsp-java~ to launch the lsp-java sandbox, or ~lsp-mode~ to launch without
+lsp-java:
+
+#+begin_src shell
+./dev/env/start-dev-env.sh lsp-mode dev/test-projects/maven
+#+end_src
+
+The plain sandbox uses ~jdtls~ on PATH or downloads it into its development
+cache. The ~lsp-java~ sandbox always downloads JDTLS into its own cache, since
+~lsp-java~ expects a full installation there (otherwise it would build the
+server with Maven). A suitable JDK must already be installed. Open a Java file
+after launch to start the server and agent discovery.
 
 ** Single-module projects (~maven/~, ~gradle/~)
 Minimal single-module bookstore apps. Both declare the three agents in
@@ -41,7 +54,7 @@ Launch the development environment from the repo root directory (no Windows
 equivalent at the moment):
 
 #+begin_src shell
-./dev/env/start-dev-env.sh lsp dev/test-projects/gradle
+./dev/env/start-dev-env.sh lsp-java dev/test-projects/gradle
 #+end_src
 
 ** Multi-module projects (~maven-multimodule/~, ~gradle-multimodule/~)
@@ -108,5 +121,5 @@ cd -
 
 **** Start test environment
 #+begin_src shell
-./dev/env/start-dev-env.sh lsp dev/test-projects/gradle-multimodule
+./dev/env/start-dev-env.sh lsp-java dev/test-projects/gradle-multimodule
 #+end_src

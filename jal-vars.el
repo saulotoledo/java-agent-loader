@@ -65,12 +65,21 @@ Each element is either:
 Properties (as plist) can include :params and :jar-path.
 An entry whose ARTIFACT-ID matches a known agent overrides its defaults.
 
-Set this before lsp-java or eglot-java loads, typically via
+Set this before enabling a JAL client mode, typically via
 `use-package jal :custom'."
   :type '(repeat (cons :tag "Agent"
                    (string :tag "Artifact ID")
                    (plist :key-type symbol
                      :value-type (choice string (const :tag "None" nil)))))
+  :group 'jal)
+
+(defcustom jal-lsp-server-ids '(jdtls)
+  "Server IDs (symbols) that JAL treats as local JDTLS clients in lsp-mode.
+`lsp-java' registers its client as `jdtls', so the default covers it and
+any client registered with that `:server-id'. Add the ID of a custom JDTLS
+client registered under another name, e.g. (jdtls my-jdtls).
+Set this before enabling `jal-lsp-java-mode'."
+  :type '(repeat symbol)
   :group 'jal)
 
 (defcustom jal-auto-setup nil

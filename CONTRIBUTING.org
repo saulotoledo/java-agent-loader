@@ -69,3 +69,17 @@ history.
 
 By contributing, you agree that your contributions will be licensed under the
 package's existing license.
+
+* Client adapter checks
+
+Run the dependency-free suite with ~make test~. If ~lsp-mode~ is installed,
+run the real-framework checks separately (no JDTLS download required):
+
+#+begin_src sh
+emacs --batch -Q --eval "(progn (require 'package) (package-initialize))" \
+  -L . -l tests/jal-lsp-integration-test.el -f ert-run-tests-batch-and-exit
+#+end_src
+
+The compatibility case also checks ~lsp-java~ when it is installed; otherwise
+that case is skipped. To inspect a real Java server, use the ~lsp-mode~ or
+~lsp-java~ development sandbox described in ~dev/test-projects/README.org~.

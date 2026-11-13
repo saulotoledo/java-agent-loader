@@ -62,6 +62,11 @@ including your %s package version."
                fn-name package-name package-name)))
     (display-warning 'jal msg :warning)))
 
+(defvar jal--java-key-override nil
+  "Java key fixed for the running detection operation, or nil.
+Bound while an asynchronous detection finalizes, so its results are cached
+under the JVM that was active when it started.")
+
 (defun jal--current-java-key ()
   "Return a canonical key identifying the currently active JVM.
 Calls `jal-current-java-key-function' (set by the active client module)
@@ -69,11 +74,12 @@ to obtain the raw java binary path, then resolves it through all symlinks
 so the key is stable regardless of how Java was invoked.  Falls back to
 the first `java' found on PATH when no client function is registered.
 This key is used to scope per-JVM entries inside the project cache file."
-  (let* ((java-bin (if jal-current-java-key-function
-                     (funcall jal-current-java-key-function)
-                     (executable-find "java")))
-          (resolved (and java-bin (file-truename java-bin))))
-    (or resolved java-bin "java")))
+  (or jal--java-key-override
+    (let* ((java-bin (if jal-current-java-key-function
+                       (funcall jal-current-java-key-function)
+                       (executable-find "java")))
+            (resolved (and java-bin (file-truename java-bin))))
+      (or resolved java-bin "java"))))
 
 (defun jal--config-scoped-p (config)
   "Return non-nil when CONFIG use the scoped (per-JVM) format.

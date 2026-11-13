@@ -28,5 +28,5 @@ jobs:
           LOCAL_REPO: ${{ github.workspace }}
           RECIPE: (jal :fetcher github :repo "saulotoledo/java-agent-loader")
           # Change to true when the package is already in MELPA:
-          EXIST_OK: false
+          EXIST_OK: true
         run: echo $GITHUB_REF && make -C ~/melpazoid
