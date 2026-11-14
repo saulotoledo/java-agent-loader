@@ -17,7 +17,7 @@
 
 ;;; Commentary:
 
-;; Loaded by `init-lsp.el' and `init-eglot.el'. Provides isolation sandbox,
+;; Loaded by the client init files. Provides isolation sandbox,
 ;; package bootstrap, project wiring, JAL load helpers, and debug commands.
 ;;
 ;; Isolation model (per client):
@@ -47,10 +47,10 @@
   "Project opened on startup. Set from `JAL_DEV_PROJECT'.")
 
 (defvar jal-dev/client nil
-  "Symbol identifying the active client: `lsp' or `eglot'.")
+  "Symbol identifying the active sandbox client.")
 
 (defun jal-dev/bootstrap (client)
-  "Initialize isolation sandbox and package.el for CLIENT (`lsp' or `eglot')."
+  "Initialize isolation sandbox and package.el for CLIENT."
   (setq jal-dev/client client)
   (setq jal-dev/tmp-dir
     (or (getenv "JAL_DEV_TMPDIR")
@@ -85,6 +85,59 @@
   (unless (package-installed-p 'use-package)
     (package-install 'use-package))
   (require 'use-package))
+
+(defvar jal-dev/jdtls-url
+  "https://download.eclipse.org/jdtls/milestones/1.57.0/jdt-language-server-1.57.0-202602261110.tar.gz"
+  "JDTLS archive used only by the development sandboxes.")
+
+(defun jal-dev/ensure-jdtls (destination &optional skip-path)
+  "Return a JDTLS launcher from PATH or install it under DESTINATION.
+With SKIP-PATH non-nil, ignore PATH and always use DESTINATION, for clients
+such as `lsp-java' that expect a complete server installation there.
+Downloads are confined to this development helper, never the JAL modes."
+  (or (and (not skip-path) (executable-find "jdtls"))
+      (let ((launcher (expand-file-name
+                       (if (eq system-type 'windows-nt) "bin/jdtls.bat" "bin/jdtls")
+                       destination))
+            (plugins (expand-file-name "plugins" destination)))
+        (unless (and (file-executable-p launcher) (file-directory-p plugins))
+          (require 'url-handlers)
+          (unless (executable-find "tar") (error "JDTLS setup requires tar"))
+          (let ((archive (make-temp-file "jal-jdtls-" nil ".tar.gz")))
+            (unwind-protect
+                (progn
+                  (message "JAL dev: downloading JDTLS to %s" destination)
+                  (url-copy-file jal-dev/jdtls-url archive t)
+                  (make-directory destination t)
+                  (with-temp-buffer
+                    (unless (zerop (call-process "tar" nil t nil
+                                                 "-xzf" archive "-C" destination))
+                      (error "JDTLS extraction failed: %s" (buffer-string)))))
+              (delete-file archive)))
+          (unless (and (file-executable-p launcher) (file-directory-p plugins))
+            (error "Incomplete JDTLS installation in %s" destination)))
+        launcher)))
+
+(defun jal-dev/jdtls-data-dir (workspace-directory root)
+  "Return the JDTLS data directory under WORKSPACE-DIRECTORY for project ROOT."
+  (expand-file-name (secure-hash 'sha1 (expand-file-name root))
+                    workspace-directory))
+
+(defvar jal-dev--fresh-data-dirs (make-hash-table :test 'equal)
+  "Data directories already reset during this Emacs session.")
+
+(defun jal-dev/jdtls-fresh-data-dir (workspace-directory root)
+  "Return the JDTLS data directory for ROOT, emptied on first use per session.
+A persisted Buildship model can deadlock JDTLS 1.57 during `initialize' when
+the project is reopened, so sandboxes always start from a clean workspace.
+Later calls in the same session (e.g. a restart) keep the directory."
+  (let ((data (jal-dev/jdtls-data-dir workspace-directory root)))
+    (unless (gethash data jal-dev--fresh-data-dirs)
+      (puthash data t jal-dev--fresh-data-dirs)
+      (when (and (file-directory-p data)
+                 (string-prefix-p (expand-file-name workspace-directory) data))
+        (delete-directory data t)))
+    data))
 
 (defun jal-dev/setup-project ()
   "Bind `project.el' to `JAL_DEV_PROJECT' and open it on startup.

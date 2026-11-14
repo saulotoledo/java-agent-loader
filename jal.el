@@ -26,7 +26,7 @@
 ;;
 ;; Java Agent Loader (JAL) automates the manual injection of `-javaagent'
 ;; arguments into the JDT Language Server (JDTLS) process used by development
-;; environments like `lsp-java' or `eglot-java'.
+;; environments like `lsp-mode' (with or without `lsp-java') or `eglot-java'.
 ;;
 ;; In the Java ecosystem, a "Java Agent" is a native JVM plugin that uses
 ;; bytecode instrumentation to modify compiled code on the fly as it loads
@@ -48,7 +48,7 @@
 (require 'jal-build-gradle)
 
 (autoload 'jal-lsp-java-mode "jal-client-lsp"
-  "Toggle JAL integration with lsp-java (global minor mode)." t)
+  "Toggle JAL integration with JDTLS in lsp-mode (global minor mode)." t)
 (autoload 'jal-eglot-java-mode "jal-client-eglot"
   "Toggle JAL integration with eglot-java (global minor mode)." t)
 
@@ -222,14 +222,18 @@ and `jal-agents-detected-hook' is run once detection completes."
              ;; Capture before async: the Maven/Gradle process buffer is
              ;; killed before the sentinel callback runs.
              (origin-buffer (current-buffer))
-             (origin-directory default-directory))
+             (origin-directory default-directory)
+             (origin-java-key (jal--current-java-key)))
         (jal--detect-agents-core-async
           agents-to-check
           (lambda (detection-results)
             ;; Leave the build-tool process sentinel before minibuffer I/O
             ;; or jal-agents-detected-hook (LSP/eglot restart).
             (jal--defer-in-buffer origin-buffer origin-directory
-              #'jal--finalize-detected-agents detection-results)))))))
+              (lambda (results)
+                (let ((jal--java-key-override origin-java-key))
+                  (jal--finalize-detected-agents results)))
+              detection-results)))))))
 
 (defun jal--finalize-detected-agents (detection-results)
   "Prompt, cache, and run hooks for DETECTION-RESULTS.
@@ -269,12 +273,16 @@ caching the result. Used for single, non-batch detection."
     (message "JAL: Detection already in progress.")
     (setq jal--detection-in-progress t)
     (let ((origin-buffer (current-buffer))
-           (origin-directory default-directory))
+           (origin-directory default-directory)
+           (origin-java-key (jal--current-java-key)))
       (jal--detect-agents-core-async
         (list agent-id)
         (lambda (detection-results)
           (jal--defer-in-buffer origin-buffer origin-directory
-            #'jal--finalize-detected-agent agent-id detection-results))))))
+            (lambda (id results)
+              (let ((jal--java-key-override origin-java-key))
+                (jal--finalize-detected-agent id results)))
+            agent-id detection-results))))))
 
 (defun jal--finalize-detected-agent (agent-id detection-results)
   "Prompt and cache a single AGENT-ID from DETECTION-RESULTS.

@@ -144,160 +144,8 @@
 ;; jal-client-lsp advice installation
 ;; ---------------------------------------------------------------------------
 
-;; Stub out lsp-java symbols so the file can be loaded without lsp-java.
-(defvar lsp-java-vmargs '("-Xmx1G"))
-(defvar lsp-java-java-path "java")
-(defvar lsp-java-configuration-runtimes nil)
-(defvar lsp-after-initialize-hook nil)
-
-(defun lsp-java--ls-command ()
-  "Return the list of command-line arguments to start JDTLS."
-  '("java" "-jar" "jdtls.jar"))
-
-(require 'jal-client-lsp)
-
-(ert-deftest jal-test/lsp-mode-off-by-default ()
-  "Loading the package does not auto-enable lsp integration."
-  (should (null (default-value 'jal-lsp-java-mode))))
-
-(ert-deftest jal-test/lsp-mode-installs-advice ()
-  "`jal-lsp-java-mode' installs the around advice on lsp-java--ls-command."
-  (jal-lsp-java-mode 1)
-  (should (advice-member-p #'jal--lsp-java-ls-command-advice 'lsp-java--ls-command))
-  ;; Clean up
-  (jal-lsp-java-mode -1))
-
-(ert-deftest jal-test/lsp-mode-off-removes-advice-and-hooks ()
-  "`jal-lsp-java-mode -1' removes the advice and all registered hooks."
-  (jal-lsp-java-mode 1)
-  (jal-lsp-java-mode -1)
-  (should-not (advice-member-p #'jal--lsp-java-ls-command-advice 'lsp-java--ls-command))
-  (should-not (memq #'jal--lsp-java-check-interface lsp-after-initialize-hook))
-  (should-not (memq #'jal--lsp-after-initialize-find-agents lsp-after-initialize-hook))
-  (should-not (memq #'jal--lsp-java-restart jal-agents-detected-hook)))
-
-(ert-deftest jal-test/lsp-mode-toggle-is-idempotent ()
-  "Enabling twice does not stack advice or duplicate hooks; disabling cleans up."
-  (jal-lsp-java-mode 1)
-  (jal-lsp-java-mode 1)
-  (should jal-lsp-java-mode)
-  (should (= 1 (cl-count #'jal--lsp-java-check-interface lsp-after-initialize-hook)))
-  (should (= 1 (cl-count #'jal--lsp-after-initialize-find-agents lsp-after-initialize-hook)))
-  (jal-lsp-java-mode -1)
-  (should-not jal-lsp-java-mode)
-  (should-not (advice-member-p #'jal--lsp-java-ls-command-advice 'lsp-java--ls-command)))
-
-(ert-deftest jal-test/lsp-orig-callable-after-disable ()
-  "After disabling, lsp-java--ls-command still returns the bare command."
-  (jal-lsp-java-mode 1)
-  (jal-lsp-java-mode -1)
-  (should (equal '("java" "-jar" "jdtls.jar") (lsp-java--ls-command))))
-
-(ert-deftest jal-test/lsp-mode-does-not-warn-when-function-missing ()
-  "`jal-lsp-java-mode' does not warn at enable time; warn deferred to hook."
-  (cl-letf (((symbol-function 'lsp-java--ls-command) nil))
-    (let ((warned nil))
-      (cl-letf (((symbol-function 'display-warning)
-                  (lambda (_type msg &rest _) (setq warned msg))))
-        (jal-lsp-java-mode 1))
-      ;; No warning should be emitted during enable itself.
-      (should (null warned))
-      (should (memq #'jal--lsp-java-check-interface lsp-after-initialize-hook))))
-  (jal-lsp-java-mode -1))
-
-(ert-deftest jal-test/lsp-check-interface-warns-when-function-missing ()
-  "`jal--lsp-java-check-interface' warns when lsp-java--ls-command is not defined."
-  (let ((jal--lsp-java-interface-warning-issued nil))
-    (cl-letf (((symbol-function 'lsp-java--ls-command) nil))
-      (let ((warned nil))
-        (cl-letf (((symbol-function 'display-warning)
-                    (lambda (_type msg &rest _) (setq warned msg))))
-          (jal--lsp-java-check-interface))
-        (should warned)
-        (should (string-match-p "lsp-java--ls-command" warned))))))
-
-(ert-deftest jal-test/lsp-check-interface-silent-when-function-present ()
-  "`jal--lsp-java-check-interface' is silent when lsp-java--ls-command exists."
-  (let ((jal--lsp-java-interface-warning-issued nil)
-         (warned nil))
-    (cl-letf (((symbol-function 'display-warning)
-                (lambda (_type msg &rest _) (setq warned msg))))
-      (jal--lsp-java-check-interface))
-    (should (null warned))))
-
-(ert-deftest jal-test/lsp-check-interface-warns-only-once ()
-  "`jal--lsp-java-check-interface' warns at most once per session."
-  (let ((jal--lsp-java-interface-warning-issued nil)
-         (warn-count 0))
-    (cl-letf (((symbol-function 'lsp-java--ls-command) nil)
-               ((symbol-function 'display-warning)
-                 (lambda (_type _msg &rest _) (cl-incf warn-count))))
-      (jal--lsp-java-check-interface)
-      (jal--lsp-java-check-interface)
-      (jal--lsp-java-check-interface))
-    (should (= 1 warn-count))))
-
-(ert-deftest jal-test/lsp-advice-does-not-mutate-vmargs ()
-  "The lsp-java advice does not permanently modify lsp-java-vmargs."
-  (let ((original-vmargs (copy-sequence lsp-java-vmargs)))
-    (advice-add 'lsp-java--ls-command :around #'jal--lsp-java-ls-command-advice)
-    ;; Calling the advised function should not change the outer variable.
-    (lsp-java--ls-command)
-    (should (equal original-vmargs lsp-java-vmargs))
-    (advice-remove 'lsp-java--ls-command #'jal--lsp-java-ls-command-advice)))
-
-(ert-deftest jal-test/lsp-after-initialize-defers-find-agents ()
-  "`jal--lsp-after-initialize-find-agents' schedules via `jal--defer-in-buffer'."
-  (let ((deferred-fn nil)
-         (deferred-args nil))
-    (cl-letf (((symbol-function 'jal--defer-in-buffer)
-                (lambda (_buf _dir fn &rest args)
-                  (setq deferred-fn fn)
-                  (setq deferred-args args))))
-      (with-temp-buffer
-        (jal--lsp-after-initialize-find-agents)
-        (should (eq deferred-fn #'jal-find-and-configure-agents))
-        (should (null deferred-args))))))
-
-(ert-deftest jal-test/lsp-restart-is-deferred ()
-  "`jal--lsp-java-restart' schedules `jal--lsp-java-restart-now' via `jal--defer'.
-Workspaces are captured at schedule time so the timer need not run in a
-Java buffer (`lsp-workspaces' is buffer-local)."
-  (let ((deferred-fn nil)
-         (deferred-args nil))
-    (cl-letf (((symbol-function 'jal--lsp-java-workspaces) (lambda () '(ws)))
-               ((symbol-function 'jal--defer)
-                 (lambda (fn &rest args)
-                   (setq deferred-fn fn)
-                   (setq deferred-args args))))
-      (jal--lsp-java-restart)
-      (should (eq deferred-fn #'jal--lsp-java-restart-now))
-      (should (equal deferred-args '((ws)))))))
-
-(ert-deftest jal-test/lsp-restart-now-without-lsp-mode-in-buffer ()
-  "`jal--lsp-java-restart-now' restarts captured workspaces off a non-lsp buffer."
-  (let ((restarted nil)
-         (jal--configured-scopes (make-hash-table :test 'equal)))
-    (puthash "scope" t jal--configured-scopes)
-    (cl-letf (((symbol-function 'lsp-workspaces) (lambda () nil))
-               ((symbol-function 'lsp-workspace-restart)
-                 (lambda (_ws) (setq restarted t))))
-      (with-temp-buffer
-        (should-not (bound-and-true-p lsp-mode))
-        ;; Pass workspaces explicitly (as the deferred call does).
-        (jal--lsp-java-restart-now '(ws))
-        (should restarted)
-        (should (= 0 (hash-table-count jal--configured-scopes)))))))
-
-(ert-deftest jal-test/lsp-restart-falls-back-to-session-workspaces ()
-  "`jal--lsp-java-workspaces' uses session workspaces when buffer has none."
-  (cl-letf (((symbol-function 'lsp-workspaces) (lambda () nil))
-             ((symbol-function 'lsp-session) (lambda () 'session))
-             ((symbol-function 'lsp--session-workspaces)
-               (lambda (session)
-                 (should (eq session 'session))
-                 '(session-ws))))
-    (should (equal '(session-ws) (jal--lsp-java-workspaces)))))
+(load (expand-file-name "jal-client-test.el"
+        (file-name-directory (or load-file-name buffer-file-name))) nil t)
 
 (ert-deftest jal-test/detect-finalize-is-deferred ()
   "Detection completion schedules finalize via `jal--defer-in-buffer'."
@@ -314,10 +162,29 @@ Java buffer (`lsp-workspaces' is buffer-local)."
                  (lambda (_ids callback)
                    (funcall callback results))))
       (jal-detect-java-agents)
-      (should (eq deferred-fn #'jal--finalize-detected-agents))
+      (should (functionp deferred-fn))
       (should (equal deferred-args (list results)))
       ;; Lock held until deferred finalize runs.
       (should jal--detection-in-progress))))
+
+(ert-deftest jal-test/detect-finalize-keeps-java-key-from-start ()
+  "Results are finalized under the JVM active when detection started."
+  (let* ((jal--detection-in-progress nil)
+         (jal-agents-config '(("lombok" :params "")))
+         (current "/jdk-first/java")
+         (jal-current-java-key-function (lambda () current))
+         (deferred nil) (seen nil))
+    (cl-letf (((symbol-function 'jal--defer-in-buffer)
+                (lambda (_b _d fn &rest args) (setq deferred (cons fn args))))
+               ((symbol-function 'jal--detect-agents-core-async)
+                 (lambda (_ids callback) (funcall callback nil)))
+               ((symbol-function 'jal--finalize-detected-agents)
+                 (lambda (_r) (setq seen (jal--current-java-key)))))
+      (jal-detect-java-agents)
+      (setq current "/jdk-second/java")
+      (apply (car deferred) (cdr deferred))
+      (should (string-suffix-p "jdk-first/java" seen))
+      (should (string-suffix-p "jdk-second/java" (jal--current-java-key))))))
 
 (ert-deftest jal-test/finalize-detected-agents-clears-lock ()
   "`jal--finalize-detected-agents' clears the in-progress lock."

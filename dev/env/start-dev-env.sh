@@ -3,13 +3,14 @@
 #
 # Usage:
 #   ./dev/env/start-dev-env.sh eglot <project-dir>
-#   ./dev/env/start-dev-env.sh lsp   <project-dir>
+#   ./dev/env/start-dev-env.sh lsp-java <project-dir>
+#   ./dev/env/start-dev-env.sh lsp-mode <project-dir> # plain lsp-mode
 #
 # Isolation model:
-#   /tmp/jal-{eglot,lsp}-<PID>/  session-volatile Emacs state
+#   /tmp/jal-{eglot,lsp-java,lsp-mode}-<PID>/  session-volatile Emacs state
 #                                deleted on exit (kill-emacs-hook + trap)
-#   dev/env/.pkg-{eglot,lsp}/    ELPA packages   (persistent)
-#   dev/env/.jdtls-eglot/        JDTLS server    (persistent, eglot only)
+#   dev/env/.pkg-{eglot,lsp-java,lsp-mode}/    ELPA packages   (persistent)
+#   dev/env/.jdtls-{client}/     JDTLS server    (persistent)
 
 set -euo pipefail
 
@@ -17,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 usage() {
-  echo "Usage: $0 {eglot|lsp} <project-dir>"
+  echo "Usage: $0 {eglot|lsp-java|lsp-mode} <project-dir>"
   exit 1
 }
 
@@ -32,10 +33,15 @@ case "$CLIENT" in
     TMP_PREFIX="jal-eglot"
     LABEL="eglot-java"
     ;;
-  lsp)
-    INIT_FILE="$SCRIPT_DIR/init-lsp.el"
-    TMP_PREFIX="jal-lsp"
+  lsp-java)
+    INIT_FILE="$SCRIPT_DIR/init-lsp-java.el"
+    TMP_PREFIX="jal-lsp-java"
     LABEL="lsp-java"
+    ;;
+  lsp-mode)
+    INIT_FILE="$SCRIPT_DIR/init-lsp-mode.el"
+    TMP_PREFIX="jal-lsp-mode"
+    LABEL="lsp-mode without lsp-java"
     ;;
   *)
     echo "Unknown client: $CLIENT"
@@ -52,11 +58,10 @@ if [[ ! -d "$PROJECT_DIR" ]]; then
 fi
 
 # Force hash-table deserialization for lsp-mode. A parent shell may export
-# LSP_USE_PLISTS=1; MELPA packages in .pkg-lsp are normally compiled without
+# LSP_USE_PLISTS=1; MELPA packages in the sandbox caches are compiled without
 # it, and a compile/runtime mismatch yields hash-table-p errors on every
-# JSON-RPC message. If .pkg-lsp was ever installed with LSP_USE_PLISTS set,
-# delete that directory once so packages recompile in hash-table mode:
-#   rm -rf "$SCRIPT_DIR/.pkg-lsp"
+# JSON-RPC message. If a cache was installed with LSP_USE_PLISTS set, remove
+# the matching .pkg-lsp-java/ or .pkg-lsp-mode/ directory once to recompile.
 unset LSP_USE_PLISTS
 
 # -- Create /tmp sandbox -------------------------------------------------------
@@ -79,7 +84,9 @@ echo " Init file           : $INIT_FILE"
 echo " /tmp sandbox        : $TMP_DIR  (deleted on exit)"
 echo " Packages (persist)  : $SCRIPT_DIR/.pkg-${CLIENT}"
 echo " LSP_USE_PLISTS      : unset (hash-table mode)"
-[[ "$CLIENT" == "eglot" ]] && echo " JDTLS   (persist)   : $SCRIPT_DIR/.jdtls-eglot"
+case "$CLIENT" in
+  eglot|lsp-mode) echo " JDTLS   (persist)   : $SCRIPT_DIR/.jdtls-${CLIENT}" ;;
+esac
 echo " Project             : $PROJECT_DIR"
 echo "----------------------------------------------"
 
