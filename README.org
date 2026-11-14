@@ -36,6 +36,7 @@ All JAL configuration variables:
 | ~jal-auto-setup~            | boolean | ~nil~       | Skip prompt; auto-detect agents on every startup                                                               |
 | ~jal-known-agents~          | list    | (built-in)  | Read-only. Known agents (Lombok, OpenTelemetry, JaCoCo)                                                        |
 | ~jal-additional-agents~     | list    | ~nil~       | Use this to add agents or override ~jal-known-agents~ entries                                                  |
+| ~jal-lsp-server-ids~        | list    | ~(jdtls)~   | lsp-mode server IDs treated as local JDTLS clients. See the lsp-mode setup                                     |
 | ~jal-maven-lifecycle-phase~ | string  | ~"compile"~ | Maven phase prepended to ~dependency:list~. ~nil~ skips compilation (faster, but may fail on unbuilt projects) |
 
 #+begin_quote
